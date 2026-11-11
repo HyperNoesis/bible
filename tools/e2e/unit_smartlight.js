@@ -1,0 +1,21 @@
+const vm=require('vm'),fs=require('fs'),path=require('path');const ctx={self:{}};ctx.self=ctx;vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(path.join(__dirname,'../../js/grade-core.js'),'utf8'),ctx);const G=ctx.VS.GradeCore;let bad=0;
+const t=(n,ok,x)=>{if(!ok)bad++;console.log((ok?'PASS ':'FAIL ')+n+(x!==undefined?' -> '+x:''))};
+const settle=(lum)=>{let p;for(let i=0;i<40;i++)p=G.planTone(lum,p);return p};
+t('dark face (lum 60) gets gamma < 0.9',settle(60).gamma<0.9,settle(60).gamma);
+t('already bright (lum 130) stays off',settle(130).gamma===1&&!settle(130).active);
+t('slightly dim (lum 115, gamma > 0.95) inside deadband = off',settle(115).gamma===1);
+t('clearly dim (lum 100) turns on',settle(100).active===true);
+t('gamma never below 0.6',settle(8).gamma>=0.6,settle(8).gamma);
+t('smoothing: one tick moves only a little',Math.abs(G.planTone(40,{gamma:1}).gamma-1)<0.1);
+t('no reading keeps previous',G.planTone(0,{gamma:0.8}).gamma===0.8);
+// LUT through the REAL applyLut: mid-grey must get brighter, black/white must stay put, hue order preserved
+const lut=G.toneLut(17,{gamma:0.7});
+const px=new Uint8ClampedArray([60,60,60,255, 0,0,0,255, 255,255,255,255, 120,60,30,255]);G.applyLut(px,lut,1);
+t('grey 60 brightened',px[0]>60+15,px[0]);
+t('black stays black',px[4]===0&&px[5]===0&&px[6]===0);
+t('white stays white',px[8]>=253&&px[9]>=253&&px[10]>=253,px[8]);
+t('colour order kept (r>g>b)',px[12]>px[13]&&px[13]>px[14],[px[12],px[13],px[14]].join(','));
+t('gamma 1 = identity',(()=>{const q=new Uint8ClampedArray([77,140,200,255]);G.applyLut(q,G.toneLut(17,{gamma:1}),1);return Math.abs(q[0]-77)<=2&&Math.abs(q[1]-140)<=2&&Math.abs(q[2]-200)<=2})());
+t('curve is monotonic',(()=>{let prev=-1;for(let v=0;v<=255;v+=5){const q=new Uint8ClampedArray([v,v,v,255]);G.applyLut(q,lut,1);if(q[0]<prev)return false;prev=q[0]}return true})());
+process.exit(bad?1:0);

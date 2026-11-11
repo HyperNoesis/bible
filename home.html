@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genesis — Home</title>
+<link rel="icon" href="assets/logo.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#08090a">
+<link rel="stylesheet" href="css/genesis-system.css">
+</head>
+<body>
+  <div class="app-shell">
+    <a class="skip-link" href="#mainContent">Skip to main content</a>
+    <div id="nav-root"></div>
+    <div class="main-content" id="mainContent" role="main">
+      <header class="hv-head">
+        <h1 id="greeting">Welcome</h1>
+        <p class="hv-greet" id="stageEyebrow">Pick up where you left off, or start a new recording.</p>
+      </header>
+
+      <section class="hv-primary" id="heroBanner" aria-labelledby="hmPrimaryTitle">
+        <div class="hv-copy">
+          <h2 id="hmPrimaryTitle">Ready to record?</h2>
+          <p>Pick a room, find your frame and press record. Your recordings are saved on this device.</p>
+          <div class="hv-actions">
+            <a href="studio.html" class="g-btn g-btn--primary" id="ctaStudio">Open Studio</a>
+            <a href="environments.html" class="g-btn g-btn--secondary">Browse environments</a>
+          </div>
+          <div class="hv-picker" id="stagePicker" role="group" aria-label="Choose a room to preview"></div>
+        </div>
+        <figure class="hv-preview">
+          <div class="hv-stage" id="stageMedia" role="img" aria-label="Preview of the selected room"></div>
+          <figcaption class="hv-cap"><span id="stageNow" aria-live="polite"></span><span class="g-chip g-chip--info">Scene preview</span></figcaption>
+        </figure>
+      </section>
+
+      <div class="h-quick" aria-label="Quick links"><a href="editor.html" data-ic="layers">Open editor</a><a href="audio.html" data-ic="audio">Audio studio</a><a href="projects.html" data-ic="projects">All recordings</a></div>
+
+      <nav class="path" id="howPath" aria-label="How it works" hidden>
+        <a href="environments.html"><b>Choose a world</b><small>Browse the scene library</small></a>
+        <a href="studio.html"><b>Find your frame</b><small>Start the camera, check light and mic</small></a>
+        <a href="studio.html" class="make"><b>Record your take</b><small>One tap, saved to Projects</small></a>
+      </nav>
+
+      <div class="section h-section">
+        <div class="section-head">
+          <h2>Continue where you left off</h2>
+          <a href="projects.html" class="section-note">View all &rarr;</a>
+        </div>
+        <div id="recentRecordings" class="h-recent" aria-live="polite"></div>
+      </div>
+
+      <div class="section h-section">
+        <div class="section-head">
+          <h2>Rooms to try</h2>
+          <a href="environments.html" class="section-note">View library &rarr;</a>
+        </div>
+        <div id="envGallery" class="hv-row"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/error-boundary.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabase-loader.js"></script>
+  <script src="js/providers/auth-provider.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/providers/storage-provider.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/iris.js"></script>
+  <script src="js/providers/environment-provider.js"></script>
+  <script>
+    function formatDuration(seconds) {
+      if (!seconds || !isFinite(seconds)) return '';
+      const m = Math.floor(seconds / 60);
+      const s = Math.round(seconds % 60);
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    (async () => {
+      const user = await window.VS.renderNav('home');
+      if (!user) return;
+      const first = user.name.split(' ')[0];
+      const h = new Date().getHours();
+      document.getElementById('greeting').textContent = `${h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'}${first && first !== 'Guest' ? ', ' + first : ''}`;
+
+      // Room picker: chips swap the framed preview. No auto-rotating slideshow; the page stays still until you choose.
+      const heroProvider = new window.VS.StaticEnvironmentProvider();
+      heroProvider.hydrateFromStorage().then(() => {
+        const all = heroProvider.list().filter(e => e.type !== 'image');
+        const pick = (all.filter(e => /premium/.test(e.id)).concat(all)).filter((e, i, a) => a.indexOf(e) === i).slice(0, 4);
+        const stage = document.getElementById('stageMedia');
+        const picker = document.getElementById('stagePicker');
+        const now = document.getElementById('stageNow');
+        if (!pick.length) return;
+        pick.forEach((env, i) => {
+          const chip = document.createElement('button');
+          chip.type = 'button'; chip.className = 'hv-chip'; chip.setAttribute('aria-pressed', 'false');
+          chip.innerHTML = `<span class="hv-th" style="${heroProvider.getPreviewStyle(env.id)}"></span><span></span>`;
+          chip.lastChild.textContent = env.name;
+          chip.addEventListener('click', () => show(i));
+          picker.appendChild(chip);
+        });
+        function show(i) {
+          stage.style.cssText = heroProvider.getPreviewStyle(pick[i].id);
+          picker.querySelectorAll('.hv-chip').forEach((c, k) => c.setAttribute('aria-pressed', String(k === i)));
+          now.textContent = pick[i].name;
+          stage.setAttribute('aria-label', 'Preview of ' + pick[i].name);
+          document.getElementById('ctaStudio').href = `studio.html?env=${pick[i].id}`;
+        }
+        show(0);
+      });
+
+      document.querySelectorAll('.h-quick [data-ic]').forEach(a => a.insertAdjacentHTML('afterbegin', window.VS.icon(a.dataset.ic, 16)));
+      const recContainer = document.getElementById('recentRecordings');
+      const homeUrls = [];
+      recContainer.innerHTML = '<div class="g-skel p-skel"></div><div class="g-skel p-skel"></div><div class="g-skel p-skel"></div>';
+      window.VS.storage.listRecordings().then(recs => {
+        if (recs.length === 0) {
+          document.getElementById('howPath').hidden = false;
+          recContainer.className = '';
+          recContainer.innerHTML = `
+            <div class="g-empty" style="max-width:560px">
+              <h3>No recordings yet</h3>
+              <p class="g-text-2">Open Studio, pick a room and press Record. Your first take is saved on this device and shows up here.</p>
+              <a class="g-btn g-btn--primary" href="studio.html?action=start">Start your first recording</a>
+            </div>`;
+          return;
+        }
+        recContainer.innerHTML = '';
+        const sorted = recs.slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 4);
+        sorted.forEach(rec => {
+          const url = URL.createObjectURL(rec.blob); homeUrls.push(url);
+          const title = rec.meta.title || rec.meta.environment || 'Recording';
+          const card = document.createElement('a');
+          card.className = 'p-card'; card.href = 'projects.html#rec-' + rec.id; card.setAttribute('aria-label', 'Play ' + title);
+          card.innerHTML = `<span class="p-thumb" style="pointer-events:none"><video src="${url}" muted preload="auto" playsinline></video><span class="p-play">${window.VS.icon('play', 18)}</span></span><span class="p-body"><h3 class="p-title"></h3><span class="p-sub"></span></span>`;
+          card.querySelector('.p-title').textContent = title;
+          const hv = card.querySelector('video'); hv.addEventListener('loadeddata', () => { hv.play().then(() => setTimeout(() => { hv.pause(); try { hv.currentTime = 0; } catch (e) {} }, 140)).catch(() => {}); }, { once: true });
+          let when = ''; try { when = new Date(rec.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) {}
+          card.querySelector('.p-sub').textContent = (rec.meta.createdAt || when) + ' \u00b7 Play';
+          recContainer.appendChild(card);
+        });
+        window.addEventListener('beforeunload', () => homeUrls.forEach(u => URL.revokeObjectURL(u)));
+      }).catch(() => {
+        recContainer.innerHTML = '<div class="g-errorstate" style="max-width:560px"><h3>Genesis could not load your recordings</h3><p class="g-text-2">Nothing has been changed. Open Projects to try again.</p><a class="g-btn g-btn--secondary" href="projects.html">Open Projects</a></div>';
+      });
+
+      const envProvider = new window.VS.StaticEnvironmentProvider();
+      envProvider.hydrateFromStorage().then(() => {
+        const container = document.getElementById('envGallery');
+        container.innerHTML = '';
+        envProvider.list().filter(e => /premium/.test(e.id)).concat(envProvider.list()).filter((e, i, a) => a.indexOf(e) === i).slice(0, 6).forEach(env => {
+          const card = document.createElement('a');
+          card.className = 'hv-scene'; card.href = `studio.html?env=${env.id}`;
+          card.setAttribute('aria-label', `Use ${env.name} in Studio`);
+          card.innerHTML = `<span class="hv-scene-img" style="${envProvider.getPreviewStyle(env.id)}"></span><span class="hv-scene-body"><b></b><small></small></span>`;
+          card.querySelector('b').textContent = env.name;
+          card.querySelector('small').textContent = env.type === 'image' ? 'Your image' : (env.category || 'Included');
+          container.appendChild(card);
+        });
+      });
+    })();
+  </script>
+<script src="js/net-status.js"></script>
+<script src="js/first-run.js"></script>
+<script src="js/genesis-design.js"></script>
+</body>
+</html>

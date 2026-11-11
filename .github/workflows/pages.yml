@@ -1,0 +1,27 @@
+name: Deploy website (GitHub Pages)
+# One-time: repo Settings -> Pages -> Source = "GitHub Actions". After that every push to main that changes the site redeploys it.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['gpu/**', 'server/**', 'docs/**', 'android/**', '**/*.md', '.github/workflows/modal-deploy.yml', '.github/workflows/python-tests.yml']
+  workflow_dispatch:
+permissions: { contents: read, pages: write, id-token: write }
+concurrency: { group: pages, cancel-in-progress: true }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: sh scripts/build-site.sh
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: www }
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: '${{ steps.d.outputs.page_url }}' }
+    steps:
+      - id: d
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Projects, Genesis</title>
+<link rel="icon" href="assets/logo.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0E14">
+
+<link rel="stylesheet" href="css/genesis-system.css">
+</head>
+<body>
+  <a href="#mainContent" class="skip-link">Skip to content</a>
+  <div class="app-shell">
+    <div id="nav-root"></div>
+    <main class="main-content g-app" id="mainContent" style="background:transparent">
+      <div class="pg-head">
+        <div>
+          <h1>Projects</h1>
+          <p>Your recordings and custom environments. Find, play, rename and download them here.</p>
+        </div>
+        <a href="studio.html" class="g-btn g-btn--primary">New recording</a>
+      </div>
+
+      <div class="pg-note" id="syncNote" role="note"></div>
+
+      <div class="g-seg pg-tabs" role="tablist" aria-label="Asset type">
+        <button type="button" id="tabRecordings" role="tab" aria-selected="true" aria-controls="panelRecordings">Recordings</button>
+        <button type="button" id="tabEnvironments" role="tab" aria-selected="false" aria-controls="panelEnvironments">Environments</button>
+      </div>
+
+      <div class="pg-toolbar">
+        <input type="search" id="searchInput" class="g-input" placeholder="Search by name" aria-label="Search by name" autocomplete="off">
+        <select id="sortSelect" class="g-select" aria-label="Sort order">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="name">Name A to Z</option>
+        </select>
+        <div class="g-seg" role="group" aria-label="View">
+          <button type="button" id="viewCards" aria-pressed="true">Cards</button>
+          <button type="button" id="viewList" aria-pressed="false">List</button>
+        </div>
+        <span class="pg-count" id="libCount" role="status" aria-live="polite"></span>
+      </div>
+
+      <div id="panelRecordings" role="tabpanel" aria-labelledby="tabRecordings"><div id="recList" class="p-grid"></div></div>
+      <div id="panelEnvironments" role="tabpanel" aria-labelledby="tabEnvironments" hidden><div id="envGrid" class="p-grid"></div></div>
+    </main>
+  </div>
+
+  <dialog class="g-dialog p-dialog" id="playDlg" aria-labelledby="playTitle">
+    <video id="playVideo" controls playsinline preload="metadata"></video>
+    <h2 id="playTitle"></h2>
+    <p class="g-text-2" id="playSub" style="font-size:13px"></p>
+    <div class="g-dialog__actions"><a class="g-btn g-btn--secondary" id="playDownload" download aria-label="Download this recording">Download</a><button type="button" class="g-btn g-btn--primary" id="playClose">Close</button></div>
+  </dialog>
+
+  <dialog class="g-dialog" id="envDlg" aria-labelledby="envDlgTitle">
+    <h2 id="envDlgTitle">Delete this environment?</h2>
+    <p class="g-text-2">This removes the image from your environment list on this device. Recordings you already made with it are not changed. You cannot undo this.</p>
+    <div class="g-dialog__actions"><button type="button" class="g-btn g-btn--secondary" id="envKeep">Keep environment</button><button type="button" class="g-btn g-btn--danger" id="envConfirm">Delete environment</button></div>
+  </dialog>
+
+  <script src="js/error-boundary.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabase-loader.js"></script>
+  <script src="js/providers/auth-provider.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/providers/storage-provider.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/net-status.js"></script>
+  <script src="js/design-system.js"></script>
+  <script src="js/providers/environment-provider.js"></script>
+  <script src="js/providers/captions-provider.js"></script>
+  <script src="js/providers/groq-transcription.js"></script>
+  <script src="js/projects-page.js"></script>
+<script src="js/genesis-design.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+# Netlify applies these on every deploy. Real fix for a real class of bug:
+# without this, Netlify's CDN (or an intermediate cache) can keep serving an
+# old cached sw.js/HTML to visitors even after a fresh deploy, independent
+# of anything the service worker's own version bumping does browser-side.
+
+/sw.js
+  Cache-Control: no-cache
+
+/*.html
+  Cache-Control: no-cache
+
+# Cross-origin isolation (v0.61): lets the matting workers use several CPU threads (SharedArrayBuffer) on phones that allow it.
+# "credentialless" (not "require-corp") so cross-origin images/scripts the app already uses (jsDelivr fallbacks, Pollinations images)
+# keep loading; browsers that do not understand it simply stay single-threaded. No popups/iframes/OAuth are used, so COOP same-origin is safe.
+# Kill switch without a redeploy: localStorage vs_threads = 1.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: credentialless

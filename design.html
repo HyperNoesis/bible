@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="js/dev-gate.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genesis — Design reference</title>
+<meta name="theme-color" content="#0c0b0e">
+<style>
+  body { padding: var(--gutter); max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: var(--fs-h1); margin: 0 0 6px; } h2 { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-faint); margin: 36px 0 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .sw { width: 92px; } .sw i { display: block; height: 52px; border-radius: 12px; border: 1px solid var(--border); } .sw span { font-size: 11.5px; color: var(--text-dim); display: block; margin-top: 4px; }
+  .demo-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; box-shadow: var(--shadow-md); min-width: 220px; flex: 1; }
+</style>
+
+<link rel="stylesheet" href="css/genesis-system.css">
+</head>
+<body>
+  <p class="eyebrow" style="color:var(--ember);font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 6px">Design reference</p>
+  <h1>One family, <em class="serif">calm</em> and clear</h1>
+  <p style="color:var(--text-dim);max-width:60ch">Live components from css/premium.css. Each colour has one job: ember = make something, indigo = where you are, lagoon = information, orchid = generated. Reuse these before inventing new styles.</p>
+
+  <h2>Colour roles</h2>
+  <div class="row">
+    <div class="sw"><i style="background:var(--ember)"></i><span>ember · make</span></div>
+    <div class="sw"><i style="background:var(--indigo)"></i><span>indigo · you are here</span></div>
+    <div class="sw"><i style="background:var(--lagoon)"></i><span>lagoon · info</span></div>
+    <div class="sw"><i style="background:var(--orchid)"></i><span>orchid · generated</span></div>
+    <div class="sw"><i style="background:var(--success)"></i><span>success</span></div>
+    <div class="sw"><i style="background:var(--warning)"></i><span>warning</span></div>
+    <div class="sw"><i style="background:var(--danger)"></i><span>danger</span></div>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <div class="sw"><i style="background:var(--surface-1)"></i><span>panel</span></div>
+    <div class="sw"><i style="background:var(--surface-2)"></i><span>raised</span></div>
+    <div class="sw"><i style="background:var(--surface-3)"></i><span>control</span></div>
+    <div class="sw"><i style="background:var(--surface-4)"></i><span>popover</span></div>
+    <div class="sw"><i style="background:var(--inset)"></i><span>inset</span></div>
+  </div>
+
+  <h2>Buttons</h2>
+  <div class="row">
+    <button class="btn primary" type="button">Record</button>
+    <button class="btn" type="button">Secondary</button>
+    <button class="btn ghost" type="button">Quiet</button>
+    <button class="btn danger" type="button">Delete</button>
+    <button class="btn primary" type="button" disabled>Disabled</button>
+  </div>
+
+  <h2>Ready check chips (studio)</h2>
+  <div class="row" style="position:relative">
+    <span class="ux-chip" data-tone="good"><i class="ux-dot"></i><b>Light</b><em>Good</em></span>
+    <span class="ux-chip" data-tone="warn"><i class="ux-dot"></i><b>Mic</b><em>Too loud</em></span>
+    <span class="ux-chip" data-tone="idle"><i class="ux-dot"></i><b>Camera</b><em>Measuring</em></span>
+  </div>
+
+  <h2>First-run steps</h2>
+  <div style="position:relative;height:60px"><div class="ux-guide" style="bottom:auto;top:6px"><ol class="ux-steps">
+    <li class="done"><span class="ux-num">&#10003;</span><span class="ux-step-t">Pick a scene</span></li>
+    <li class="now"><span class="ux-num">2</span><span class="ux-step-t">Start camera</span></li>
+    <li><span class="ux-num">3</span><span class="ux-step-t">Record</span></li></ol></div></div>
+
+  <h2>Cards and states</h2>
+  <div class="row" style="align-items:stretch">
+    <div class="demo-card"><b>Scene card</b><p style="color:var(--text-dim);margin:6px 0 0;font-size:13px">Imagery leads, label sits on a gradient.</p></div>
+    <div class="demo-card" style="border-color:var(--border-accent)"><b>Selected</b><p style="color:var(--text-dim);margin:6px 0 0;font-size:13px">Indigo border plus a check, never colour alone.</p></div>
+    <div class="demo-card"><b>Empty state</b><p style="color:var(--text-dim);margin:6px 0 0;font-size:13px">Say what is missing and offer the next step.</p></div>
+  </div>
+
+  <h2>Toast with undo</h2>
+  <div style="position:relative;height:70px"><div class="ux-undo" style="position:static;transform:none"><span>Recording deleted</span><button type="button">Undo</button></div></div>
+
+  <h2>Microcopy</h2>
+  <p style="color:var(--text-dim);max-width:60ch">One tone: plain, kind, specific. Say "Record" for the action and "Recording" for the state. Never claim a capability the app has not verified.</p>
+<script src="js/genesis-design.js"></script>
+</body>
+</html>

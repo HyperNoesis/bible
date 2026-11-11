@@ -1,0 +1,22 @@
+# --engine clean (commercial-safe)
+torch>=2.5.0
+torchvision
+numpy<2
+opencv-python
+timm
+scipy
+scikit-image
+kornia
+einops
+tqdm
+imageio==2.25.0
+imageio[ffmpeg]
+huggingface_hub==0.36.2
+safetensors
+# optional: the ONNX route instead of torch weights (set --birefnet-onnx or put weights/birefnet.onnx there)
+# onnxruntime-gpu   (or onnxruntime)
+# --engine matanyone2 (reference only) also needs:
+# hydra-core>=1.3.2
+# omegaconf
+# cython
+# gitpython

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Genesis, a virtual studio in your browser</title>
+<meta name="description" content="Create polished recordings with a live camera preview, virtual environments and a simple production workspace. Free to try, nothing to install.">
+<link rel="icon" href="assets/logo.png"><link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0E14">
+<link rel="preload" href="assets/fonts/SpaceGrotesk-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/environments/scene-premium-podcast.jpg" as="image" fetchpriority="high">
+
+<link rel="stylesheet" href="css/genesis-system.css">
+</head>
+<body class="g-app lp">
+<a class="g-skip" href="#main">Skip to main content</a>
+
+<header class="lp-top" id="lpTop">
+  <div class="lp-wrap lp-top-in">
+    <a class="e-brand" href="landing.html" aria-label="Genesis home"><img src="assets/logo-mark.png" alt="">Genesis</a>
+    <nav class="lp-nav" aria-label="Page">
+      <a href="#rooms">Rooms</a><a href="#how">How it works</a><a href="#privacy">Privacy</a><a href="#pilot">Join the pilot</a>
+    </nav>
+    <div class="lp-top-act">
+      <a class="g-btn g-btn--quiet lp-signin" href="auth.html">Sign in</a>
+      <a class="g-btn g-btn--primary" href="studio.html?guest=1" data-open-studio>Open Studio</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <!-- ============ HERO: the first-frame promise ============ -->
+  <section class="lp-hero" aria-labelledby="hero-title">
+    <div class="lp-wrap lp-hero-in">
+      <div class="lp-copy">
+        <p class="lp-eyebrow"><span class="lp-dot" aria-hidden="true"></span>A virtual studio in your browser</p>
+        <h1 id="hero-title" class="lp-h1">Step into your own studio.</h1>
+        <p class="lp-lead">Choose a room, see yourself in it, and record. Genesis runs in your browser, so there is nothing to install and no account to make.</p>
+        <div class="lp-cta">
+          <a class="g-btn g-btn--primary lp-btn-lg" href="studio.html?guest=1" data-open-studio id="heroOpen">Open Studio</a>
+          <a class="g-btn g-btn--secondary lp-btn-lg" href="#how">See how it works</a>
+        </div>
+        <ul class="lp-assure" aria-label="What to expect">
+          <li>Free to try</li>
+          <li>Camera and mic start only when you choose Start camera, or explicitly opt into auto-start</li>
+          <li>Recordings stay on your device</li>
+        </ul>
+      </div>
+
+      <div class="lp-stagecol">
+        <figure class="lp-stage" id="lpStage" aria-label="Scene preview">
+          <div class="lp-stage-img" id="lpStageImg" role="img" aria-label="Premium Podcast, a warm set for interviews and podcasts" style="background-image:url(assets/environments/scene-premium-podcast.jpg)"></div>
+          <span class="lp-corner tl" aria-hidden="true"></span><span class="lp-corner br" aria-hidden="true"></span>
+          <div class="lp-stage-cap">
+            <span class="lp-chip">Scene preview</span>
+            <span class="lp-chip lp-chip--quiet">Your camera is off</span>
+          </div>
+        </figure>
+        <div class="lp-pick-row">
+          <div class="lp-pick-meta" aria-live="polite">
+            <b id="lpSceneName">Premium Podcast</b>
+            <span id="lpSceneUse">A warm set for interviews and podcasts.</span>
+          </div>
+          <div class="lp-picks" id="lpPicks" role="group" aria-label="Preview a room"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS: three editorial steps ============ -->
+  <section class="lp-sec" id="how" aria-labelledby="how-title">
+    <div class="lp-wrap">
+      <header class="lp-sec-head">
+        <p class="lp-kicker">How it works</p>
+        <h2 id="how-title">Three steps to your first recording</h2>
+        <p class="lp-sub">Genesis explains camera and microphone access before you start. Optional auto-start is off by default and requires a separate opt-in.</p>
+      </header>
+      <ol class="lp-steps">
+        <li>
+          <span class="lp-step-n" aria-hidden="true">01</span>
+          <div class="lp-step-img" style="background-image:url(assets/environments/scene-premium-library.jpg)" role="img" aria-label="A library room"></div>
+          <h3>Pick a room</h3>
+          <p>Choose a studio from the library, or use your own picture. Each room shows a real preview first.</p>
+        </li>
+        <li>
+          <span class="lp-step-n" aria-hidden="true">02</span>
+          <div class="lp-step-img" style="background-image:url(assets/environments/scene-premium-talkshow.jpg)" role="img" aria-label="A talk show set"></div>
+          <h3>Find your frame</h3>
+          <p>Start your camera, check the light and your microphone, and step in.</p>
+        </li>
+        <li>
+          <span class="lp-step-n" aria-hidden="true">03</span>
+          <div class="lp-step-img" style="background-image:url(assets/environments/scene-premium-tech.jpg)" role="img" aria-label="A tech review studio"></div>
+          <h3>Record or go live</h3>
+          <p>Record with a safety copy saved as you go. Going live is in beta.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ ROOMS: editorial scene discovery ============ -->
+  <section class="lp-sec lp-sec--alt" id="rooms" aria-labelledby="rooms-title">
+    <div class="lp-wrap">
+      <header class="lp-sec-head lp-sec-head--row">
+        <div>
+          <p class="lp-kicker">The rooms</p>
+          <h2 id="rooms-title">Spaces for every kind of recording</h2>
+          <p class="lp-sub">Newsroom to classroom to podcast set. Pick one and Studio opens with it ready.</p>
+        </div>
+      </header>
+      <ul class="lp-rooms" id="lpRooms"></ul>
+    </div>
+  </section>
+
+  <!-- ============ USE CASES ============ -->
+  <section class="lp-sec" aria-labelledby="use-title">
+    <div class="lp-wrap">
+      <header class="lp-sec-head">
+        <p class="lp-kicker">What people make</p>
+        <h2 id="use-title">One workspace, a few different jobs</h2>
+      </header>
+      <div class="lp-use">
+        <div><h3>Podcasts and interviews</h3><p>Sit in a proper set with clean sound and a name on screen.</p></div>
+        <div><h3>Presentations</h3><p>Put the focus on your message, with a teleprompter if you need one.</p></div>
+        <div><h3>Teaching</h3><p>Record lessons in a classroom setting with steady audio.</p></div>
+        <div><h3>Business videos</h3><p>Record updates and announcements with your brand colours on screen.</p></div>
+        <div><h3>Live streams</h3><p>Go live to YouTube or Twitch through a free relay, with a checklist first.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT'S IN THE STUDIO ============ -->
+  <section class="lp-sec lp-sec--alt" aria-labelledby="feat-title">
+    <div class="lp-wrap">
+      <header class="lp-sec-head">
+        <p class="lp-kicker">Inside the studio</p>
+        <h2 id="feat-title">What you get today</h2>
+        <p class="lp-sub">Everything listed works now. Anything still experimental is labelled inside the app.</p>
+      </header>
+      <div class="lp-feat">
+        <div><span class="ic" data-ic="environments"></span><h3>Professional rooms</h3><p>Newsroom, podcast, classroom, office, library and more, or your own picture.</p></div>
+        <div><span class="ic" data-ic="captions"></span><h3>Your name on screen</h3><p>Lower thirds, tickers, countdowns, scoreboard and QR codes in your colours.</p></div>
+        <div><span class="ic" data-ic="layers"></span><h3>Run a whole show</h3><p>One Next button moves graphics, scene and teleprompter, even from a second phone.</p></div>
+        <div><span class="ic" data-ic="audio"></span><h3>Clean sound</h3><p>Voice polish, optional noise removal, and music that lowers when you talk.</p></div>
+        <div><span class="ic" data-ic="live"></span><h3>Record safely</h3><p>Recordings keep a safety copy as you go and are saved on your device.</p></div>
+        <div><span class="ic" data-ic="video"></span><h3>A second phone as a camera</h3><p>Scan a code and another phone becomes a second camera angle.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRUST ============ -->
+  <section class="lp-sec" id="privacy" aria-labelledby="priv-title">
+    <div class="lp-wrap">
+      <header class="lp-sec-head">
+        <p class="lp-kicker">Trust</p>
+        <h2 id="priv-title">Privacy and honest limits</h2>
+      </header>
+      <div class="lp-trust">
+        <div class="lp-panel">
+          <h3>Your picture stays with you</h3>
+          <ul class="lp-list">
+            <li>Your camera picture is processed on your device.</li>
+            <li>Recordings are saved on your device. Nothing is uploaded unless you choose to go live.</li>
+            <li>You can use Studio as a guest with no account. Guest work stays on this device.</li>
+          </ul>
+          <p class="lp-small"><a href="privacy.html">Read the privacy policy</a> and the <a href="terms.html">terms</a>.</p>
+        </div>
+        <div class="lp-panel">
+          <h3>What it is not</h3>
+          <ul class="lp-list">
+            <li>The background is a picture, so it looks best with the camera held still.</li>
+            <li>Older phones may need effects turned down. The built-in speed test tells you.</li>
+            <li>A phone browser cannot act as a camera for Zoom or Meet. Use Genesis to record or go live, or use OBS on a computer.</li>
+            <li>Going live needs a free relay set up once. We walk you through it.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PILOT + PRICE ============ -->
+  <section class="lp-sec lp-sec--alt" id="pilot" aria-labelledby="pilot-title">
+    <div class="lp-wrap lp-pilot">
+      <div>
+        <p class="lp-kicker">Join the pilot</p>
+        <h2 id="pilot-title">Help us make it better</h2>
+        <p class="lp-sub">We are looking for creators, teachers, churches and small businesses to use Genesis for real and tell us what breaks. It is free during the pilot, and your recordings stay yours either way.</p>
+        <p class="lp-small" id="pricing">Paid plans will be announced here before anything is charged.</p>
+        <a id="payBtn" class="g-btn g-btn--secondary" href="#pilot" hidden>Upgrade</a>
+      </div>
+      <div>
+        <div id="pilotOff" class="e-note" hidden>Pilot sign-up is not open yet. Check back soon, or open Studio as a guest in the meantime.</div>
+        <form id="pilotForm" class="lp-form" hidden>
+          <div class="g-field"><label for="pName">Your name</label><input class="g-input" id="pName" type="text" autocomplete="name" required></div>
+          <div class="g-field"><label for="pUse">What will you use it for?</label><select class="g-select" id="pUse"><option>Live streaming</option><option>Teaching or lessons</option><option>Church or community</option><option>Business videos</option><option>Podcast or interviews</option><option>Something else</option></select></div>
+          <div class="g-field"><label for="pPhone">Your phone model, if you know it</label><input class="g-input" id="pPhone" type="text" placeholder="For example, Redmi 14C"></div>
+          <div class="g-field"><label for="pNote">Anything else?</label><textarea class="g-textarea" id="pNote" rows="3"></textarea></div>
+          <button class="g-btn g-btn--primary" type="submit" id="pSend">Send my request</button>
+          <p class="lp-small" id="pHow"></p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CLOSING CTA ============ -->
+  <section class="lp-close" aria-labelledby="close-title">
+    <div class="lp-wrap">
+      <h2 id="close-title">Your studio is ready when you are.</h2>
+      <a class="g-btn g-btn--primary lp-btn-lg" href="studio.html?guest=1" data-open-studio>Open Studio</a>
+      <p class="lp-small">Free to try, no account needed.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="lp-foot">
+  <div class="lp-wrap lp-foot-in">
+    <a class="e-brand" href="landing.html" aria-label="Genesis home"><img src="assets/logo-mark.png" alt="">Genesis</a>
+    <nav aria-label="Footer"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="studio.html?guest=1">Open Studio</a><a href="auth.html">Sign in</a></nav>
+    <span>Genesis by Rejuvini</span>
+  </div>
+</footer>
+
+<script src="js/config.js"></script><script src="js/icons.js"></script><script src="js/landing.js"></script>
+<script>(function(){var ic=window.VS&&window.VS.icon;if(ic)document.querySelectorAll('[data-ic]').forEach(function(e){e.innerHTML=ic(e.dataset.ic,22)});})();</script>
+<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
+<script src="js/genesis-design.js"></script>
+</body></html>

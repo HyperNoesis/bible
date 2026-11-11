@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genesis — Environments</title>
+<link rel="icon" href="assets/logo.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0E14">
+
+<link rel="stylesheet" href="css/genesis-system.css">
+</head>
+<body>
+  <div class="app-shell">
+    <a class="skip-link" href="#mainContent">Skip to main content</a>
+    <div id="nav-root"></div>
+    <div class="main-content" id="mainContent" role="main">
+      <div class="page-head">
+        <div><h1>Environments</h1>
+          <p class="subtitle">Choose the space behind you. Preview a scene, then use it in Studio.</p>
+        </div>
+        <a href="studio.html" class="btn primary">Open Studio</a>
+      </div>
+
+      <div class="section">
+        <div class="env-toolbar">
+          <div class="env-tabs" id="categoryTabs"></div>
+          <label class="env-search" for="envSearch"><span class="sr-only" style="position:absolute;left:-9999px">Search environments</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input type="search" id="envSearch" placeholder="Search scenes" autocomplete="off"></label>
+          <input type="file" id="uploadBg" accept="image/*" aria-label="Upload a custom environment image">
+        </div>
+        <div id="envGrid" class="grid"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h2>Create an environment <span class="g-chip g-chip--warn" style="vertical-align:middle;margin-left:8px">Experimental</span></h2></div>
+        <div class="generate-panel">
+          <div class="gen-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg></div>
+          <div class="gen-copy">
+            <h3>Describe a space and Genesis generates an image</h3>
+            <p>Uses the Pollinations.ai image service, so it needs an internet connection and results vary.</p>
+            <p class="text-dim" style="font-size:13px;">Your description is sent to Pollinations.ai. Nothing from your camera is sent.</p>
+            <div class="generate-form">
+              <label class="sr-only" for="genPrompt" style="position:absolute;left:-9999px">Describe the environment</label><input type="text" id="genPrompt" placeholder="e.g. warm cinematic podcast studio overlooking Lagos at night">
+              <button id="genBtn" class="btn primary">Generate environment</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <dialog id="rmDlg" class="set-dialog" aria-labelledby="rmT"><h2 id="rmT">Remove environment?</h2><p id="rmBody"></p>
+    <div style="display:flex;gap:12px;justify-content:flex-end"><button type="button" class="btn ghost" id="rmCancel">Cancel</button><button type="button" class="btn danger" id="rmOk">Remove</button></div></dialog>
+
+  <script src="js/error-boundary.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabase-loader.js"></script>
+  <script src="js/providers/auth-provider.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/net-status.js"></script>
+  <script src="js/providers/environment-provider.js"></script>
+  <script>
+    let envProvider;
+    function notify(msg) {
+      let t = document.getElementById('gxToast');
+      if (!t) { t = document.createElement('div'); t.id = 'gxToast'; t.className = 'gx-toast'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); document.body.appendChild(t); }
+      t.textContent = msg; t.classList.add('show');
+      clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 5200);
+    }
+    // v0.59 large scene preview: arrows / swipe-free buttons, Esc closes, focus returns to the card that opened it
+    let spBack = null, spList = [], spIdx = 0, spOpener = null;
+    function spEsc(t) { return String(t).replace(/[<>&"]/g, ''); }
+    function spRender() {
+      const env = spList[spIdx]; if (!env) return;
+      spBack.querySelector('.sp-img').setAttribute('style', envProvider.getPreviewStyle(env.id));
+      spBack.querySelector('.sp-img').setAttribute('aria-label', spEsc(env.name) + ' preview');
+      spBack.querySelector('h3').textContent = env.name;
+      spBack.querySelector('.sp-meta p').textContent = (env.type === 'image' ? 'Custom upload' : (env.category || 'Built-in')) + '  \u00b7  ' + (spIdx + 1) + ' of ' + spList.length;
+      spBack.querySelector('.sp-use').setAttribute('href', 'studio.html?env=' + encodeURIComponent(env.id));
+      spBack.querySelectorAll('.sp-nav').forEach(b => { b.hidden = spList.length < 2; });
+    }
+    function spStep(d) { spIdx = (spIdx + d + spList.length) % spList.length; spRender(); }
+    function closePreview() { if (!spBack) return; spBack.hidden = true; document.removeEventListener('keydown', spKey, true); if (spOpener && spOpener.focus) spOpener.focus(); }
+    function spKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closePreview(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); spStep(1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); spStep(-1); }
+      else if (e.key === 'Tab') {   // keep focus inside the dialog
+        const f = Array.from(spBack.querySelectorAll('a[href],button')).filter(x => !x.hidden && x.offsetParent !== null); if (!f.length) return;
+        const first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+    function openPreview(list, idx, opener) {
+      if (!list.length || idx < 0) return;
+      if (!spBack) {
+        spBack = document.createElement('div'); spBack.className = 'sp-back'; spBack.hidden = true;
+        spBack.innerHTML = '<div class="sp" role="dialog" aria-modal="true" aria-label="Scene preview"><div class="sp-img" role="img">' +
+          '<button type="button" class="sp-nav sp-prev" aria-label="Previous scene">' + window.VS.icon('chevronRight', 20) + '</button>' +
+          '<button type="button" class="sp-nav sp-next" aria-label="Next scene">' + window.VS.icon('chevronRight', 20) + '</button></div>' +
+          '<div class="sp-foot"><div class="sp-meta"><h3></h3><p></p></div><span class="sp-hint">Arrow keys to browse, Esc to close</span>' +
+          '<button type="button" class="btn ghost sp-close">Close</button><a class="btn primary sp-use" href="studio.html">Use in Studio ' + window.VS.icon('arrowRight', 16) + '</a></div></div>';
+        document.body.appendChild(spBack);
+        spBack.addEventListener('click', (e) => { if (e.target === spBack) closePreview(); });
+        spBack.querySelector('.sp-prev').addEventListener('click', () => spStep(-1));
+        spBack.querySelector('.sp-next').addEventListener('click', () => spStep(1));
+        spBack.querySelector('.sp-close').addEventListener('click', closePreview);
+      }
+      spList = list; spIdx = idx; spOpener = opener || null; spRender(); spBack.hidden = false;
+      document.addEventListener('keydown', spKey, true); spBack.querySelector('.sp-use').focus();
+    }
+    const FAV_KEY = 'g_fav_env';
+    const favs = () => { try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch (e) { return []; } };
+    const toggleFav = (id) => { const f = favs(), i = f.indexOf(id); if (i < 0) f.push(id); else f.splice(i, 1); try { localStorage.setItem(FAV_KEY, JSON.stringify(f)); } catch (e) {} return i < 0; };
+    let activeCategory = 'All';
+    let searchTerm = '';
+
+    function categoriesFrom(list) {
+      const set = new Set(list.map(e => e.category || 'Custom'));
+      return ['All', ...(favs().length ? ['Favourites'] : []), ...Array.from(set)];
+    }
+
+    function renderTabs(list) {
+      const tabs = categoriesFrom(list);
+      const el = document.getElementById('categoryTabs');
+      el.innerHTML = tabs.map(t => `<button class="tab ${t === activeCategory ? 'active' : ''}" data-cat="${t}">${t}</button>`).join('');
+      el.querySelectorAll('.tab').forEach(btn => {
+        btn.addEventListener('click', () => { activeCategory = btn.dataset.cat; render(); });
+      });
+    }
+
+    // One-line use description for every scene (constitution ch.8: name + use + tags). Category fallback keeps custom/new scenes honest.
+    const ENV_USE = { 'podcast-studio': 'A control-room set for podcasts and interviews.', 'corporate-office': 'A bright office for updates and business videos.', 'newsroom': 'A broadcast desk for news-style reads.', 'classroom': 'A classroom for lessons and training.', 'outdoor': 'A soft autumn backdrop for relaxed talks.', 'interview-studio': 'A lit studio for one-to-one interviews.', 'moody-blue-backdrop': 'A dramatic blue backdrop for stand-out portraits.', 'concrete-studio': 'A neutral industrial studio for clean shots.', 'broadcast-wall': 'A video wall for sports and news shows.', 'brick-podcast-room': 'A warm brick room for relaxed conversations.', 'color-backdrop-studio': 'A colour-block backdrop for creator videos.', 'gear-room': 'A dark equipment room for tech and gear talk.' };
+    const CAT_USE = { Podcast: 'A set for podcasts and interviews.', Work: 'A professional setting for work videos.', Broadcast: 'A broadcast-style set for shows and news.', Lifestyle: 'A relaxed setting for casual videos.', Studio: 'A studio backdrop for creator videos.', 'Studio Scenes': 'A desk scene built for Studio.' };
+    const useLine = (env) => env.type === 'image' ? 'Your own picture.' : (ENV_USE[env.id] || CAT_USE[env.category] || 'A scene for your recording.');
+    async function render() {
+      const grid = document.getElementById('envGrid');
+      const list = envProvider.list();
+      renderTabs(list);
+      const filtered = (activeCategory === 'All' ? list : activeCategory === 'Favourites' ? list.filter(e => favs().includes(e.id)) : list.filter(e => (e.category || 'Custom') === activeCategory)).filter(e => !searchTerm || (e.name + ' ' + (e.category || '')).toLowerCase().includes(searchTerm));
+
+      grid.innerHTML = `<div class="upload-card" id="uploadCardTrigger">${window.VS.icon('upload', 22)}<span>Upload your own background</span></div>`;
+      filtered.forEach(env => {
+        const card = document.createElement('div');
+        card.className = 'env-card';
+        card.tabIndex = 0; card.setAttribute('role', 'button'); card.setAttribute('aria-label', `Preview ${env.name}`);
+        card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPreview(filtered, filtered.indexOf(env), card); } });
+        card.innerHTML = `
+          <div class="env-thumb" style="${envProvider.getPreviewStyle(env.id)}"></div>
+          <div class="env-body">
+            <div class="env-txt"><div class="env-name">${env.name}</div><div class="env-use">${useLine(env)}</div></div>
+            <div class="env-cat">${env.type === 'image' ? 'Custom upload' : env.category || 'Built-in'}</div>
+          </div>
+          <button type="button" class="fav-btn" data-id="${env.id}" aria-pressed="${favs().includes(env.id)}" aria-label="Favourite ${env.name.replace(/"/g, '')}">${window.VS.icon('star', 16)}</button>
+          ${env.type === 'image' ? `<button data-id="${env.id}" class="link-btn remove-env" aria-label="Remove ${env.name.replace(/"/g, '')}">Remove</button>` : ''}`;
+        card.querySelector('.fav-btn').addEventListener('click', (e) => { e.stopPropagation(); const on = toggleFav(env.id); e.currentTarget.setAttribute('aria-pressed', String(on)); if (activeCategory === 'Favourites' || (!on && !favs().length)) { if (!favs().length) activeCategory = 'All'; render(); } else renderTabs(envProvider.list()); });
+        card.querySelector('.fav-btn').addEventListener('keydown', (e) => e.stopPropagation());
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.remove-env') || e.target.closest('.fav-btn')) return;
+          openPreview(filtered, filtered.indexOf(env), card);
+        });
+        grid.appendChild(card);
+      });
+
+      if (!filtered.length) grid.insertAdjacentHTML('beforeend', `<div class="empty-state env-empty"><div class="empty-title">No scenes match "${searchTerm.replace(/[<>&"]/g, '')}"</div><div class="empty-sub">Try another word, or switch to All.</div></div>`);
+      document.getElementById('uploadCardTrigger').addEventListener('click', () => document.getElementById('uploadBg').click());
+      grid.querySelectorAll('.remove-env').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.id; const nm = (envProvider.list().find(x => x.id === id) || {}).name || 'this environment';
+          const dlg = document.getElementById('rmDlg');
+          document.getElementById('rmBody').textContent = 'Remove "' + nm + '" from your library? The image file is deleted from this device. Recordings you already made keep their picture.';
+          document.getElementById('rmOk').onclick = () => { dlg.close(); envProvider.removeCustomImage(id); const f = favs().filter(x => x !== id); try { localStorage.setItem(FAV_KEY, JSON.stringify(f)); } catch (e2) {} if (!f.length && activeCategory === 'Favourites') activeCategory = 'All'; render(); notify('Environment removed.'); };
+          document.getElementById('rmCancel').onclick = () => dlg.close();
+          dlg.showModal(); document.getElementById('rmCancel').focus();
+        });
+      });
+    }
+
+    (async () => {
+      const user = await window.VS.renderNav('environments');
+      if (!user) return;
+
+      envProvider = new window.VS.StaticEnvironmentProvider();
+      await envProvider.hydrateFromStorage();
+      render();
+      document.getElementById('envSearch').addEventListener('input', (e) => { searchTerm = e.target.value.trim().toLowerCase(); render(); });
+
+      document.getElementById('uploadBg').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const img = new Image();
+        img.onload = async () => {
+          try {
+            await window.VS.StaticEnvironmentProvider.persistCustomImage(file.name, img);
+            activeCategory = 'All';
+            await envProvider.hydrateFromStorage();
+            render();
+          } catch (err) {
+            notify(err.message);
+          }
+        };
+        img.src = URL.createObjectURL(file);
+      });
+
+      document.getElementById('genBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('genBtn');
+        const promptInput = document.getElementById('genPrompt');
+        const prompt = promptInput.value.trim();
+        if (!prompt) { notify('Describe the environment first, then press Generate environment.'); return; }
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.textContent = 'Generating...';
+        try {
+          async function fetchGeneration(attempt) {
+            const key = (window.VS && window.VS.config && window.VS.config.pollinationsApiKey || '').trim();
+            // Seed must fit Pollinations' documented range (0…2147483647 / int32) — Date.now()
+            // alone is ~1.7 trillion and gets rejected as "Query parameter validation failed".
+            const seed = (Date.now() + attempt) % 2147483647;
+            const params = `width=1280&height=720&seed=${seed}${key ? `&key=${encodeURIComponent(key)}` : ''}`;
+            const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?${params}`;
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 45000);
+            try {
+              return await fetch(url, { signal: controller.signal });
+            } catch (e) {
+              if (e.name === 'AbortError') throw new Error('Generation timed out after 45s. Pollinations.ai can be slow on first request — try again.');
+              throw new Error('Could not reach Pollinations.ai. Check your connection and try again.');
+            } finally {
+              clearTimeout(timeout);
+            }
+          }
+          let res = await fetchGeneration(0);
+          if (!res.ok && res.status >= 500) {
+            await new Promise(r => setTimeout(r, 2500));
+            res = await fetchGeneration(1);
+          }
+          if (!res.ok) {
+            let serverMessage = '';
+            try {
+              const bodyText = await res.text();
+              try {
+                const parsed = JSON.parse(bodyText);
+                serverMessage = (parsed && parsed.error && parsed.error.message) || (parsed && parsed.message) || '';
+              } catch (_) {
+                serverMessage = bodyText.slice(0, 200);
+              }
+            } catch (_) { /* body already consumed or unreadable — fall back to status only */ }
+            const reason = res.status === 401
+              ? `Pollinations.ai rejected the API key (HTTP 401)${serverMessage ? ': ' + serverMessage : ''}. Get a fresh key at enter.pollinations.ai/keys and paste it into js/config.js.`
+              : res.status === 402
+                ? `Pollinations.ai says this key is out of Pollen (HTTP 402)${serverMessage ? ': ' + serverMessage : ''}.`
+                : res.status === 429
+                  ? 'Pollinations.ai is rate-limiting (the free key allows about 1 generation per hour); wait a bit and try again.'
+                  : res.status >= 500
+                    ? `Pollinations.ai's server had an error (HTTP ${res.status}) after a retry; this is on their end, try again shortly.`
+                    : `Generation failed (HTTP ${res.status})${serverMessage ? ': ' + serverMessage : ''}. Try a different description.`;
+            throw new Error(reason);
+          }
+          const blob = await res.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          const img = new Image();
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = () => reject(new Error('Received a response but it wasn\u2019t a valid image.'));
+            img.src = objectUrl;
+          });
+          await window.VS.StaticEnvironmentProvider.persistCustomImage(prompt.slice(0, 40), img);
+          activeCategory = 'All';
+          await envProvider.hydrateFromStorage();
+          render();
+          promptInput.value = '';
+          URL.revokeObjectURL(objectUrl);
+        } catch (err) {
+          notify('Generation failed: ' + err.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = original;
+        }
+      });
+    })();
+  </script>
+<script src="js/genesis-design.js"></script>
+</body>
+</html>

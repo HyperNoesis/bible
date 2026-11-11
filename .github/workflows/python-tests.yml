@@ -1,0 +1,24 @@
+name: Studio Export tests
+on:
+  push:
+    paths: ['gpu/**', 'server/studio-export/**', 'js/providers/render-provider.js', '.github/workflows/python-tests.yml']
+  pull_request:
+    paths: ['gpu/**', 'server/studio-export/**', 'js/providers/render-provider.js']
+  workflow_dispatch:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: pip install -q numpy opencv-python-headless scipy scikit-image fastapi httpx uvicorn
+      - name: Studio Export logic (20 + 22 + 8 checks)
+        run: cd server/studio-export && python test_pipeline_logic.py && python test_scene_logic.py && python test_export_e2e.py
+      - name: GPU API (32 checks)
+        run: python gpu/test_export_api.py
+      - name: The app's real render adapter against the API
+        run: node gpu/test_adapter_compat.js

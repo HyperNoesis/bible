@@ -1,0 +1,44 @@
+v0.83: model weights bundled, see CHANGELOG-v0_83-models-bundled.md and SPLIT_PACKAGE_README.txt
+
+GENESIS v0.64 - FULL DEPLOYABLE (every model and runtime file is inside; nothing to download or restore)
+
+1) DEPLOY: upload this whole folder as-is (Netlify drop or your repo). Do not delete models/ or vendor/.
+   Netlify reads _headers automatically (needed for multi-thread). Other hosts: add the 2 Cross-Origin headers from _headers yourself, or the app just stays single-thread.
+
+2) FIRST RUN ON A PHONE: open studio.html, start the camera, wait about 1 minute. Read the line under the preview:
+     "High-quality matting is active (RVM, 448 px, NN ms per mask, N threads)"  -> RVM live works here
+     "... (MODNet ...)"                                                          -> RVM too slow, MODNet works
+     "Staying on the light model: even the smallest X size needs NN ms ..."     -> this phone stays on the light model (by design)
+3) SEND ME ONE THING: Diagnostics > "Copy report", paste it. The line "LIVE MATTING:" has the engine, threads, saved speed test and isolation status. Do it on 2+ phones.
+
+WHAT CHANGED IN v0.64 (from your first phone video)
+- Forehead cut: the person layer is the whole camera frame, so a head touching the top of the frame showed a hard straight cut. It now fades softly there (only when the head touches the frame top; otherwise untouched). Still best: sit a little further back.
+- Mask debris: detached specks and small holes in the model's raw mask are cleaned before the edge is snapped to the camera frame (js/providers/mask-clean.js). Real-photo and synthetic overlap unchanged (0.988-0.992).
+- New tests: unit_maskclean.js, t47_headroom_fade_gate.js; unit_scene.js extended.
+- NOT changed: shoulder streaks / stair-steps cannot be proven fixed from here (needs your raw camera clip); the fps pipeline is still frame-synchronous.
+
+WHAT CHANGED IN v0.63 (from your phone report: RVM measured 810 ms, MODNet 2867 ms, "chose light model")
+- The speed test was measuring a fight for the CPU (camera + light model + renderer all running). Sandbox repro: same RVM measured 178 ms inside the live app and 72 ms with the loop paused.
+  Now: the live picture holds its last frame for a few seconds while the model is timed; 3 warm-up frames; lower-quartile timing; if too slow it re-tests with 1 thread, then once more after a pause.
+- Phones use at most 2 CPU threads (the other cores are slow ones that starve the page) and ORT no longer busy-waits (allow_spinning off).
+- MODNet no longer tries WebGPU on phones (it was the likely cause of 2867 ms on the Mali-G52). Override: vs_webgpu = 1.
+- Limit per mask raised 70 -> 100 ms (vs_max_ms overrides). A "too slow" verdict now expires after 6 hours and the app looks again once after 45 s.
+- If the runtime fps ladder drops you to the light model, it looks again after 90 s (max 2 times per camera session) instead of staying down.
+- New tests: unit_bench.js, t46_upgrade_flow_gate.js (simulated hitch). Everything else still passes.
+
+WHAT CHANGED IN v0.62
+- Package is smaller: the two model files now store their weights as fp16 (models 41 MB -> 20.6 MB). Same file names, same maths, same masks (checked, see below).
+- New REAL-PHOTO gate (tools/e2e/t45_real_photo_gate.js). Quality gates now require mask overlap >= 0.98 (was 0.90).
+
+MEASURED (sandbox, real Chromium + the real onnxruntime-web, shipped model files)
+- 4 real handheld photos (curly hair, busy background): shipped RVM and MODNet vs the original float32 models, overlap 0.996 to 0.999 on every photo.
+- RVM vs MODNet on the same real photos: they agree at 0.980 to 0.985 overlap (two different models; this is agreement, NOT accuracy against a hand-made matte).
+- Synthetic clip vs exact ground truth: RVM 0.990, MODNet 0.990 to 0.994 (with 3 threads too).
+- 36 unit suites, pipeline gate, Enhance gate, MODNet gate, RVM gate, threads gate: all pass.
+
+NOT PROVEN (be honest with yourself and your users)
+- "98% on every face, always" is NOT something any model can promise. 98%+ is measured on the clips above only. Dark hair on a dark wall, hair-coloured backgrounds, fast hand motion and low light will be lower.
+- Real-phone speed and the multi-thread speed-up (the check machine has 2 cores). Native Android GPU matting is NOT built (needs the Android SDK, unreachable here).
+- Licence: RVM is GPL-3.0 (LICENSES.md). Get legal advice before charging money.
+
+KILL SWITCHES (browser storage, no redeploy):  vs_live_engine = light | modnet | rvm | auto      vs_threads = 1

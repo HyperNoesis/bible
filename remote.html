@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genesis Remote</title>
+<link rel="icon" href="assets/logo.png">
+<meta name="theme-color" content="#0B0E14">
+
+<link rel="stylesheet" href="css/genesis-system.css">
+</head>
+<body class="cmp">
+<header class="cmp-head"><img src="assets/logo.png" alt=""><div><h1>Genesis Remote</h1><small>Teleprompter controls</small></div></header>
+<div id="st" role="status" aria-live="polite">Connecting…</div>
+<div class="grid">
+  <button class="big" id="bToggle" data-cmd="toggle" disabled>Start / Pause</button>
+  <button data-cmd="slower" disabled>Slower</button><button data-cmd="faster" disabled>Faster</button>
+  <button data-cmd="lines-back" disabled>Back 3 lines</button><button data-cmd="lines-fwd" disabled>Forward 3 lines</button>
+  <button data-cmd="smaller" disabled>Text smaller</button><button data-cmd="bigger" disabled>Text bigger</button>
+  <button data-cmd="top" disabled class="gap">Back to top</button>
+  <button class="big next" data-cmd="step-next" id="bNext" disabled>Next step</button>
+  <button data-cmd="step-back" disabled class="gap">Back one step</button>
+</div>
+<div class="info" id="info"></div>
+<p class="info">Only button presses are sent to your studio. Your video and script never pass through this page. Buttons turn on when the studio is connected.</p>
+<script src="js/prompter-core.js"></script>
+<script src="js/config.js"></script>
+<script src="js/remote.js"></script>
+<script src="js/genesis-design.js"></script>
+</body>
+</html>

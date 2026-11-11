@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sign in to Genesis</title>
+<link rel="icon" href="assets/logo.png"><link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0E14" media="(prefers-color-scheme: dark)"><meta name="theme-color" content="#F5F7FB" media="(prefers-color-scheme: light)">
+
+<link rel="stylesheet" href="css/genesis-system.css">
+</head>
+<body class="g-app">
+<a class="g-skip" href="#main">Skip to main content</a>
+<div class="e-auth">
+  <aside class="e-auth-visual" style="background-image:url(assets/environments/scene-premium-podcast.jpg)" aria-hidden="true">
+    <div><h2>Step into your own studio.</h2><p>Pick a room, find your frame and record. Free to try, and nothing leaves your device unless you choose to go live.</p></div>
+  </aside>
+  <main class="e-auth-main" id="main">
+    <div class="e-auth-card">
+      <a class="e-brand" href="landing.html" aria-label="Genesis home"><img src="assets/logo-mark.png" alt="">Genesis</a>
+      <h1 id="authTitle">Welcome back</h1>
+
+      <div class="g-seg" role="group" aria-label="Sign in or create an account">
+        <button type="button" id="tabSignIn" class="active" aria-selected="true">Sign in</button>
+        <button type="button" id="tabSignUp" aria-selected="false">Sign up</button>
+      </div>
+
+      <form id="signInForm">
+        <div class="g-field"><label for="siEmail">Email</label><input class="g-input" type="email" id="siEmail" placeholder="you@example.com" autocomplete="email" required></div>
+        <div class="g-field"><label for="siPassword">Password</label><div class="e-pw"><input class="g-input" type="password" id="siPassword" placeholder="Your password" autocomplete="current-password" required><button type="button" class="field-toggle-btn" data-toggle="siPassword" aria-label="Show password"></button></div></div>
+        <div class="g-error" id="siError" role="alert"></div>
+        <button type="submit" class="g-btn g-btn--primary">Sign in</button>
+        <button type="button" id="forgotPasswordLink" class="e-small e-link-button">Forgot your password?</button>
+      </form>
+
+      <form id="signUpForm" style="display:none;">
+        <div class="g-field"><label for="suName">Name</label><input class="g-input" type="text" id="suName" placeholder="Your name" autocomplete="name" required></div>
+        <div class="g-field"><label for="suEmail">Email</label><input class="g-input" type="email" id="suEmail" placeholder="you@example.com" autocomplete="email" required></div>
+        <div class="g-field"><label for="suPassword">Password</label><div class="e-pw"><input class="g-input" type="password" id="suPassword" placeholder="At least 6 characters" autocomplete="new-password" aria-describedby="suPasswordHint" required><button type="button" class="field-toggle-btn" data-toggle="suPassword" aria-label="Show password"></button></div><span class="e-hint" id="suPasswordHint" aria-live="polite">Use at least 6 characters.</span></div>
+        <div class="g-error" id="suError" role="alert"></div>
+        <div class="g-alert g-alert--ok" id="suNotice" style="display:none;" role="status"></div>
+        <button type="submit" class="g-btn g-btn--primary">Create account</button>
+      </form>
+
+      <form id="forgotForm" style="display:none;">
+        <p class="e-small">Enter your email and we will send a reset link if an account matches it.</p>
+        <div class="g-field"><label for="fpEmail">Email</label><input class="g-input" type="email" id="fpEmail" placeholder="you@example.com" autocomplete="email" required></div>
+        <div class="g-error" id="fpError" role="alert"></div>
+        <div class="g-alert g-alert--ok" id="fpNotice" style="display:none;" role="status"></div>
+        <button type="submit" class="g-btn g-btn--primary">Send reset link</button>
+        <button type="button" id="backToSignInLink" class="e-small e-link-button">Back to sign in</button>
+      </form>
+
+      <div class="e-divider">or</div>
+      <div class="g-stack" style="gap:8px">
+        <button type="button" class="g-btn g-btn--secondary" id="guestBtn">Continue without an account</button>
+        <p class="e-small e-note" id="authHonesty"></p>
+      </div>
+      <p class="e-small e-legal"><a href="terms.html">Terms</a> &middot; <a href="privacy.html">Privacy</a></p>
+    </div>
+  </main>
+</div>
+  <script src="js/error-boundary.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabase-loader.js"></script>
+  <script src="js/providers/auth-provider.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/icons.js"></script>
+  <script>
+    
+    document.querySelectorAll('.field-toggle-btn').forEach((btn) => {
+      const input = document.getElementById(btn.dataset.toggle);
+      btn.innerHTML = window.VS.icon('eye', 17);
+      btn.addEventListener('click', () => {
+        const shown = input.type === 'text';
+        input.type = shown ? 'password' : 'text';
+        btn.innerHTML = window.VS.icon(shown ? 'eye' : 'eyeOff', 17);
+        btn.setAttribute('aria-label', shown ? 'Show password' : 'Hide password');
+      });
+    });
+
+    const suPassword = document.getElementById('suPassword');
+    const suPasswordHint = document.getElementById('suPasswordHint');
+    suPassword.addEventListener('input', () => {
+      const len = suPassword.value.length;
+      if (!len) { suPasswordHint.textContent = ''; return; }
+      suPasswordHint.textContent = len < 6 ? `${6 - len} more character${6 - len === 1 ? '' : 's'} needed` : 'Good to go';
+      suPasswordHint.classList.toggle('invalid', len < 6);
+    });
+
+    const tabSignIn = document.getElementById('tabSignIn');
+    const tabSignUp = document.getElementById('tabSignUp');
+        /* Where to go after signing in: ?next=<page> from an allow-list, otherwise Home. Never an external URL. */
+    function nextUrl() {
+      try {
+        const n = new URLSearchParams(location.search).get('next') || '';
+        if (/^(studio|home|projects|environments|editor|audio|settings)\.html(\?[A-Za-z0-9_=&.%-]{0,120})?$/.test(n)) return n;
+      } catch (e) {}
+      return 'home.html';
+    }
+    const signInForm = document.getElementById('signInForm');
+    const signUpForm = document.getElementById('signUpForm');
+    const forgotForm = document.getElementById('forgotForm');
+
+    const honestyEl = document.getElementById('authHonesty');
+    honestyEl.textContent = window.VS.auth.mode === 'supabase'
+      ? 'Your account is stored securely in the cloud and works on any device. Guests stay on this device.'
+      : 'Everything is saved on this device only. You can create an account any time.';
+
+    const titleEl = document.getElementById('authTitle');
+    function setTab(which) {
+      const up = which === 'up';
+      tabSignIn.classList.toggle('active', !up); tabSignUp.classList.toggle('active', up);
+      tabSignIn.setAttribute('aria-selected', String(!up)); tabSignUp.setAttribute('aria-selected', String(up));
+      titleEl.textContent = up ? 'Create your account' : 'Welcome back';
+    }
+    function showForm(form) {
+      [signInForm, signUpForm, forgotForm].forEach(f => f.style.display = f === form ? 'flex' : 'none');
+    }
+
+    tabSignIn.addEventListener('click', () => {
+      setTab('in');
+      showForm(signInForm);
+    });
+    tabSignUp.addEventListener('click', () => {
+      setTab('up');
+      showForm(signUpForm);
+    });
+    document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('fpEmail').value = document.getElementById('siEmail').value;
+      titleEl.textContent = 'Reset your password';
+      showForm(forgotForm);
+    });
+    document.getElementById('backToSignInLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      setTab('in');
+      showForm(signInForm);
+    });
+
+    function setLoading(btn, loading, label) {
+      btn.disabled = loading;
+      btn.textContent = loading ? 'Please wait' : label; btn.setAttribute('aria-busy', String(loading));
+    }
+
+    signInForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorEl = document.getElementById('siError');
+      const btn = signInForm.querySelector('button[type="submit"]');
+      errorEl.textContent = '';
+      setLoading(btn, true, 'Sign in');
+      try {
+        await window.VS.auth.signIn(
+          document.getElementById('siEmail').value,
+          document.getElementById('siPassword').value
+        );
+        window.location.href = nextUrl();
+      } catch (err) {
+        errorEl.textContent = err.message;
+        setLoading(btn, false, 'Sign in');
+      }
+    });
+
+    forgotForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorEl = document.getElementById('fpError');
+      const noticeEl = document.getElementById('fpNotice');
+      const btn = forgotForm.querySelector('button[type="submit"]');
+      errorEl.textContent = ''; noticeEl.style.display = 'none';
+      setLoading(btn, true, 'Send reset link');
+      try {
+        await window.VS.auth.resetPassword(document.getElementById('fpEmail').value);
+        noticeEl.textContent = 'If an account matches this address, a reset link has been sent.';
+        noticeEl.style.display = 'block';
+      } catch (err) {
+        errorEl.textContent = err.message;
+      } finally {
+        setLoading(btn, false, 'Send reset link');
+      }
+    });
+
+    signUpForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorEl = document.getElementById('suError');
+      const noticeEl = document.getElementById('suNotice');
+      const btn = signUpForm.querySelector('button[type="submit"]');
+      errorEl.textContent = ''; noticeEl.style.display = 'none';
+      setLoading(btn, true, 'Create account');
+      try {
+        const result = await window.VS.auth.signUp(
+          document.getElementById('suName').value,
+          document.getElementById('suEmail').value,
+          document.getElementById('suPassword').value
+        );
+        if (result.needsConfirmation) {
+          noticeEl.textContent = 'Almost there. Check your email to confirm your account, then sign in.';
+          noticeEl.style.display = 'block';
+          signUpForm.reset();
+          suPasswordHint.textContent = '';
+          setLoading(btn, false, 'Create account');
+        } else {
+          window.location.href = nextUrl();
+        }
+      } catch (err) {
+        errorEl.textContent = err.message;
+        setLoading(btn, false, 'Create account');
+      }
+    });
+
+    window.VS.auth.getCurrentUser().then(user => {
+      if (user && !user.guest) window.location.href = nextUrl();
+    });
+  </script>
+<script>document.getElementById("guestBtn").addEventListener("click",function(){VS.auth.continueAsGuest();location.href="studio.html";});</script>
+<script src="js/genesis-design.js"></script>
+</body>
+</html>

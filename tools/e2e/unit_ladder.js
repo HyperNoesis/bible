@@ -1,0 +1,27 @@
+// Node unit test for PerfProfile step-down ladder (pure logic). Run: node tools/e2e/unit_ladder.js
+const vm = require('vm'), fs = require('fs'), path = require('path');
+const ctx = { self: {} }; ctx.self = ctx; vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(path.join(__dirname, '../../js/providers/perf-profile.js'), 'utf8'), ctx);
+const P = ctx.VS.PerfProfile; let bad = 0;
+const t = (n, got, want) => { const ok = got === want; if (!ok) bad++; console.log((ok ? 'PASS ' : 'FAIL ') + n + ' -> ' + got); };
+t('healthy fps holds', P.decideLadderStep({ rung: 0, fps: 26, lowSeconds: 10 }).action, 'hold');
+t('low fps but too brief holds', P.decideLadderStep({ rung: 0, fps: 10, lowSeconds: 2 }).action, 'hold');
+t('sustained low steps down', P.decideLadderStep({ rung: 0, fps: 10, lowSeconds: 4 }).action, 'step-down');
+t('step goes 320 -> 256', P.decideLadderStep({ rung: 0, fps: 10, lowSeconds: 4 }).rung.id, 'modnet-256');
+t('256 -> mediapipe', P.decideLadderStep({ rung: 1, fps: 10, lowSeconds: 5 }).rung.engine, 'mediapipe');
+t('last rung reports floor', P.decideLadderStep({ rung: 3, fps: 8, lowSeconds: 9 }).action, 'floor');
+t('never changes engine while recording', P.decideLadderStep({ rung: 0, fps: 8, lowSeconds: 9, busy: true }).action, 'wait-busy');
+t('unknown fps holds', P.decideLadderStep({ rung: 0, fps: 0, lowSeconds: 9 }).action, 'hold');
+t('bad rung is clamped', P.decideLadderStep({ rung: 99, fps: 5, lowSeconds: 9 }).action, 'floor');
+t('low tier starts lighter', P.startRung('low'), 2);
+t('standard tier starts at 320', P.startRung('standard'), 0);
+t('ladder never ends below mediapipe', P.LADDER[P.LADDER.length - 1].engine, 'mediapipe');
+t('step-up: stable 256 -> 320', P.decideLadderStepUp({ rung: 1, fps: 29, highSeconds: 30, busy: false, ups: 0 }).action, 'step-up');
+t('step-up target is modnet-320', P.decideLadderStepUp({ rung: 1, fps: 29, highSeconds: 30, ups: 0 }).rung.id, 'modnet-320');
+t('step-up needs 30 s stable', P.decideLadderStepUp({ rung: 1, fps: 29, highSeconds: 29, ups: 0 }).action, 'hold');
+t('step-up needs high fps', P.decideLadderStepUp({ rung: 1, fps: 24, highSeconds: 60, ups: 0 }).action, 'hold');
+t('step-up never while recording/live', P.decideLadderStepUp({ rung: 1, fps: 30, highSeconds: 90, busy: true, ups: 0 }).action, 'hold');
+t('step-up capped (anti-flap)', P.decideLadderStepUp({ rung: 1, fps: 30, highSeconds: 90, ups: P.LADDER_MAX_UPS }).action, 'hold');
+t('step-up never leaves MediaPipe', P.decideLadderStepUp({ rung: 2, fps: 30, highSeconds: 90, ups: 0 }).action, 'hold');
+t('step-up never above 320', P.decideLadderStepUp({ rung: 0, fps: 30, highSeconds: 90, ups: 0 }).action, 'hold');
+process.exit(bad ? 1 : 0);

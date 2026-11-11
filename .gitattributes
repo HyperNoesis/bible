@@ -1,0 +1,6 @@
+*.sh text eol=lf
+*.onnx binary
+*.wasm binary
+*.pth binary
+*.jpg binary
+*.png binary

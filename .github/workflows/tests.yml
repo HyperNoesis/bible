@@ -1,0 +1,42 @@
+name: Tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Restore big binaries (MODNet model, ORT wasm) if the repo does not carry them
+        run: sh scripts/restore-big-files.sh
+      - name: Unit tests (pure logic)
+        run: |
+          fail=0
+          for f in tools/e2e/unit_*.js; do node "$f" > /tmp/u.log 2>&1 || { echo "::error::$f failed"; tail -15 /tmp/u.log; fail=1; }; done
+          exit $fail
+      - name: Install Playwright + Chromium
+        run: |
+          npm i --no-save playwright@1.49.1
+          npx playwright install --with-deps chromium
+      - name: Gate A - fake camera, full pipeline (FPS, flicker, reference frame, blank/frozen)
+        run: node tools/e2e/t40_pipeline_gate.js
+      - name: Gate B - real MODNet worker (IoU, mask flicker, main thread free)
+        run: node tools/e2e/t41_modnet_gate.js
+      - name: Gate D - real RVM live-tier worker (IoU, mask flicker, main thread free)
+        run: node tools/e2e/t43_rvm_gate.js
+      - name: Gate E - cross-origin isolation + multi-thread WASM correctness
+        run: node tools/e2e/t44_threads_gate.js
+      - name: Gate C - Enhance export (re-matting, duration/resolution, audio, resume, model cache)
+        run: node tools/e2e/t42_enhance.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gate-report
+          path: |
+            gate_report.json
+            gate_last_frame.png

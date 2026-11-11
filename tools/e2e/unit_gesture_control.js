@@ -1,0 +1,13 @@
+const vm=require('vm'),fs=require('fs'),path=require('path');const ctx={self:{}};ctx.self=ctx;vm.createContext(ctx);
+for(const f of['hand-gesture-core.js','gesture-control.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../../js/',f),'utf8'),ctx);
+let bad=0;const t=(n,g,w)=>{const ok=g===w;if(!ok)bad++;console.log((ok?'PASS ':'FAIL ')+n+' -> '+g)};
+const run=(seq,step)=>{const f=ctx.VS.GestureControl.makeController();let t0=0;return seq.map(g=>f(g,(t0+=step||125)))};
+const j=a=>JSON.stringify(a.filter(Boolean));
+t('thumbs up held = next once',j(run(Array(10).fill('thumbs_up'))),'["next"]');
+t('peace held = prev',j(run(Array(8).fill('peace'))),'["prev"]');
+t('brief flicker does nothing',j(run(['thumbs_up','thumbs_up','none','thumbs_up'])),'[]');
+t('open palm / fist / point ignored',j(run([].concat(Array(8).fill('open_palm'),Array(8).fill('fist'),Array(8).fill('point')))),'[]');
+t('cooldown blocks a quick second',j(run([].concat(Array(7).fill('thumbs_up'),Array(7).fill('peace')))),'["next"]');
+t('second fires after cooldown (slow samples)',j(run([].concat(Array(7).fill('thumbs_up'),['none'],Array(7).fill('peace')),400)),'["next","prev"]');
+t('null input safe',j(run([null,undefined,null])),'[]');
+process.exit(bad?1:0);

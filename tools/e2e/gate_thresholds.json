@@ -1,0 +1,18 @@
+{
+  "_note": "Regression gate on a software-GL CI runner with a SYNTHETIC clip. minFps is a LIVENESS floor (first sandbox run on a 1-CPU box: 1.47 fps); tighten it from the first real CI run. It does NOT prove phone FPS or that it looks premium.",
+  "minFps": 1.0,
+  "maxFlickerMad": 3.0,
+  "maxFlickerFrac": 0.02,
+  "maxRefMad": 10,
+  "minLumaStd": 12,
+  "minChangingFrames": 6,
+  "engineTimeoutMs": 240000,
+  "sampleMs": 8000,
+  "modnetMinIou": 0.98,
+  "modnetMaxMaskFlicker": 2.5,
+  "modnetMaxMainGapMs": 400,
+  "modnetFrames": 10,
+  "rvmMinIou": 0.98,
+  "rvmMaxMaskFlicker": 2.5,
+  "rvmMaxMainGapMs": 400
+}
