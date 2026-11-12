@@ -21,7 +21,7 @@ Browser virtual studio (cutout, scenes, broadcast tools) plus an optional GPU se
 Full click-by-click guide, costs and safety limits: [`docs/DEPLOY_FROM_PHONE.md`](docs/DEPLOY_FROM_PHONE.md).
 
 ## Models
-Nothing over 100 MB is committed (GitHub blocks it). The export models (BiRefNet matting and portrait, BiRefNet general ONNX, MatAnyone 2 reference) are pulled from their GitHub releases at pinned versions and SHA-256-checked by `server/studio-export/fetch_models.sh`; the Modal image build runs it, so cold starts download nothing. The browser models (MODNet, RVM) are small and are in `models/`.
+Nothing over 100 MB is on `main` (GitHub blocks it). **The four heavy models are also stored in this repo**, on the `models` branch, split into 90 MB parts (`sh restore.sh` there joins and verifies them); `fetch_models.sh` falls back to that branch automatically if an original release link disappears. The export models (BiRefNet matting and portrait, BiRefNet general ONNX, MatAnyone 2 reference) are pulled from their GitHub releases at pinned versions and SHA-256-checked by `server/studio-export/fetch_models.sh`; the Modal image build runs it, so cold starts download nothing. The browser models (MODNet, RVM) are small and are in `models/`.
 
 ## Licences, read before selling anything
 See `LICENSES.md`. In short: BiRefNet is MIT. **MatAnyone 2 is non-commercial** (reference only, off by default; set repo variable `GENESIS_INCLUDE_REFERENCE=0` to leave it out of the image). **RVM in the browser live tier is GPL-3.0**: fine for testing, replace before you charge anyone (plan in `docs/MODEL_DECISION_v0_82.md`). SAM2Matting is non-commercial and is not used.
