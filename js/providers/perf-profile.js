@@ -121,6 +121,8 @@
     { id: 'mediapipe-light', engine: 'mediapipe', longEdge: 0, effects: 'full' },
     { id: 'mediapipe-light-lean', engine: 'mediapipe', longEdge: 0, effects: 'lean' },
   ];
+  const HOPELESS_SEG_MS = 700;     // one mask slower than this = under about 1.4 fps
+  const HOPELESS_SECONDS = 3;      // ...for this many one-second checks in a row
   const LADDER_FLOOR_FPS = 18;     // below this for LADDER_LOW_SECONDS in a row -> step down
   const LADDER_LOW_SECONDS = 4;
   const LADDER_MAX_FIRST_RUNG = { low: 2, standard: 0 }; // a 'low' tier device starts at modnet-256
@@ -136,6 +138,12 @@
     const camAware = c.camFps > 0;   // v0.80: when the camera's real rate is known, judge the MODEL against the CAMERA, not against a fixed 18 fps
     const floor = camAware ? Math.min(LADDER_FLOOR_FPS, c.camFps * CAM_BOUND_SHARE) : LADDER_FLOOR_FPS;
     const need = camAware ? LADDER_LOW_SECONDS_CAM : LADDER_LOW_SECONDS;
+    // v0.84: a mask that takes this long is a slideshow (about 1.4 fps or less). Stepping down one size at a time cannot fix it, and neither "fps = 0"
+    // nor "recording" may trap a phone there: go straight to the light model (verified against a real Mali-G52 phone: MODNet 4.7 s per mask).
+    if (c.segMs >= HOPELESS_SEG_MS && (c.lowSeconds | 0) >= HOPELESS_SECONDS && LADDER[rung].engine !== 'mediapipe') {
+      const mp = LADDER.findIndex((r) => r.engine === 'mediapipe');
+      return { action: 'step-down', nextRung: mp, rung: LADDER[mp], reason: 'hopeless' };
+    }
     if (!(c.fps > 0) || c.fps >= floor || (c.lowSeconds | 0) < need) return hold('hold');
     if (camAware && !modelIsBottleneck(c)) return hold('hold', 'camera-bound');   // the camera (dim room, auto exposure) or the page is the limit: a smaller model would not help
     if (rung >= LADDER.length - 1) return hold('floor');
@@ -153,7 +161,7 @@
   /** @param {{fps:number, camFps?:number, segMs?:number}} c  @returns {boolean} true when the matting model is what limits the frame rate */
   function modelIsBottleneck(c) {
     c = c || {};
-    if (!(c.fps > 0)) return false;
+    if (!(c.fps > 0)) return c.segMs >= MEDIAPIPE_MIN_SEG_MS;   // v0.84: a phone so slow that it reports 0 fps is the model's fault, not the camera's (it used to count as 'not the model' and was never stepped down)
     const cam = c.camFps > 0 ? c.camFps : 0;
     if (cam && c.fps >= cam * CAM_BOUND_SHARE) return false;
     if (c.segMs > 0 && c.segMs < (1000 / (cam || 30)) * 0.75) return false;
@@ -200,7 +208,7 @@
 
   VS.PerfProfile = {
     lowQuartile, benchFresh, wasmThreads, BENCH_MAX_AGE_MS,
-    modelIsBottleneck, CAM_BOUND_SHARE, LADDER_LOW_SECONDS_CAM, MEDIAPIPE_MIN_SEG_MS,
+    HOPELESS_SEG_MS, HOPELESS_SECONDS, modelIsBottleneck, CAM_BOUND_SHARE, LADDER_LOW_SECONDS_CAM, MEDIAPIPE_MIN_SEG_MS,
     classifyDevice, readSignals, detect, decideDegradeAction, decideSaver, decideLadderStep, decideLadderStepUp, startRung, LADDER, LADDER_UP_FPS, LADDER_UP_SECONDS, LADDER_MAX_UPS, LADDER_FLOOR_FPS, LADDER_LOW_SECONDS, SAVER_BATTERY_LEVEL, SAVER_FRAME_MS,
     LOW_MEMORY_GB, LOW_THREADS, INFERENCE_BOUND_SHARE, MAX_STRIDE,
   };

@@ -1804,6 +1804,7 @@
       showBenchNote(why + ' (' + (/RVM/.test(segProvider.label || '') ? 'RVM' : 'MODNet') + ' ' + e + ' px).');
     };
     const note = (key, text) => { const n = performance.now(); if (!ladderNoted[key] || n - ladderNoted[key] > 30000) { ladderNoted[key] = n; segLogPush('hold', { why: key, floor: Math.round(floorFps * 10) / 10 }); if (text) showBenchNote(text); } };
+    if (segMsEma >= PP.HOPELESS_SEG_MS && ladderLow >= PP.HOPELESS_SECONDS) { segLogPush('to-light', { why: 'hopeless: mask needs ' + Math.round(segMsEma) + ' ms' }); ladderToMediaPipe(); return true; }   // v0.84
     if (edge > 320) {              // full size is above rung 0: first step goes straight to 320
       if (ladderLow >= lowNeed && !busy) { applyEdge(320, 'Frame rate was low, so matting now runs smaller'); return true; }
       if (cam > 0 && recentFps < PP.LADDER_FLOOR_FPS && !modelBound) note('camera-bound', 'The camera is delivering ' + cam + ' fps, so that is the limit here, not the model. Matting quality is unchanged. A brighter room usually lets the camera run faster.');
@@ -1866,7 +1867,7 @@
           'only the edge updates half as often, so fast movement may show a slightly trailing edge.'
       );
     } else if (action === 'no-stride-help' || action === 'ceiling') {
-      if (!window.__ceilingNoted) { window.__ceilingNoted = true; showBenchNote('Camera/phone is the speed limit here (' + recentFps + ' fps). Face a window or lamp: a brighter room often lets the camera run faster.'); }
+      if (!window.__ceilingNoted) { window.__ceilingNoted = true; showBenchNote(segMsEma >= 400 ? 'The matting model needs ' + (segMsEma / 1000).toFixed(1) + ' s per frame on this phone, so the model (not the camera) is the limit. Use Auto or MediaPipe for live video; keep the high-quality model for exported recordings.' : 'Camera/phone is the speed limit here (' + recentFps + ' fps). Face a window or lamp: a brighter room often lets the camera run faster.'); }
     } else if (false) {
       setPerfBanner(
         'no-stride-help',

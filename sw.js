@@ -6,7 +6,7 @@
 
 // Bump on every deploy that touches js/*, css/*, or SHELL_ASSETS — this is
 // what forces an already-installed client to drop stale cached files.
-const SHELL_CACHE = 'genesis-shell-v110';
+const SHELL_CACHE = 'genesis-shell-v111';
 const RUNTIME_CACHE = 'genesis-runtime-v10';
 
 const SHELL_ASSETS = [
