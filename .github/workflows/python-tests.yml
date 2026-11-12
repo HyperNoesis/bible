@@ -15,7 +15,7 @@ jobs:
         with: { python-version: '3.11' }
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
-      - run: pip install -q numpy opencv-python-headless scipy scikit-image fastapi httpx uvicorn
+      - run: pip install -q numpy opencv-python-headless scipy scikit-image fastapi httpx uvicorn imageio-ffmpeg
       - name: Studio Export logic (20 + 22 + 8 checks)
         run: cd server/studio-export && python test_pipeline_logic.py && python test_scene_logic.py && python test_export_e2e.py
       - name: GPU API (32 checks)
