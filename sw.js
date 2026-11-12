@@ -6,7 +6,7 @@
 
 // Bump on every deploy that touches js/*, css/*, or SHELL_ASSETS — this is
 // what forces an already-installed client to drop stale cached files.
-const SHELL_CACHE = 'genesis-shell-v109';
+const SHELL_CACHE = 'genesis-shell-v110';
 const RUNTIME_CACHE = 'genesis-runtime-v10';
 
 const SHELL_ASSETS = [
@@ -88,6 +88,19 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// v0.84: cross-origin isolation WITHOUT server headers. GitHub Pages cannot send the _headers file, and without COOP/COEP the browser
+// has no SharedArrayBuffer, so the matting WASM runs on ONE thread (3 s per frame on a phone). The service worker adds the same two
+// headers (same values as _headers) to every same-origin response, including worker scripts and wasm. Cross-origin responses are untouched.
+const ISO_HEADERS = { 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'credentialless' };
+function iso(res) {
+  try {
+    if (!res || res.type === 'opaque' || res.type === 'opaqueredirect' || res.type === 'error' || res.status === 0) return res;
+    const h = new Headers(res.headers);
+    for (const k in ISO_HEADERS) h.set(k, ISO_HEADERS[k]);
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+  } catch (e) { return res; }
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -98,10 +111,10 @@ self.addEventListener('fetch', (event) => {
     // Self-hosted engine files (MediaPipe wasm + model, ~11 MB): CACHE-FIRST. They are versioned by path and never
     // change in place, so after the first visit Studio starts without downloading anything.
     event.respondWith(
-      caches.match(req).then((cached) => cached || fetch(req).then((res) => {
+      caches.match(req).then((cached) => (cached ? iso(cached) : fetch(req).then((res) => {
         if (res && res.ok) caches.open(RUNTIME_CACHE).then((c) => c.put(req, res.clone()));
-        return res;
-      }))
+        return iso(res);
+      })))
     );
     return;
   }
@@ -113,9 +126,9 @@ self.addEventListener('fetch', (event) => {
       fetch(req)
         .then((res) => {
           if (res && res.ok) caches.open(SHELL_CACHE).then((c) => c.put(req, res.clone()));
-          return res;
+          return iso(res);
         })
-        .catch(() => caches.match(req))
+        .catch(() => caches.match(req).then(iso))
     );
     return;
   }

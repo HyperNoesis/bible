@@ -11,7 +11,7 @@ Nothing here needs a laptop. Use the browser on your phone (desktop-site mode he
 2. Repo, Actions tab, "Deploy website (GitHub Pages)", Run workflow (or just push to `main`).
 3. Your site is at `https://<owner>.github.io/<repo>/`. Open it and use "Add to Home Screen".
 
-GitHub Pages cannot set headers, so `_headers` is ignored there (the service worker versions itself, so this is fine). Cloudflare Pages and Netlify do read it.
+GitHub Pages cannot send the `_headers` file, and without its COOP/COEP headers the browser has no SharedArrayBuffer, so the matting runs on ONE thread (about 3 s per frame on a mid-range phone, measured on a Mali-G52 device). v0.84 fixes this inside the app: `sw.js` adds the same two headers to every same-origin response, so the second page you open after the first visit is cross-origin isolated. Check it in Diagnostics: `cross-origin isolated true`, `threads now` above 1. Cloudflare Pages and Netlify read `_headers` directly and need no workaround.
 
 **Alternative, Cloudflare Pages:** Workers & Pages, Create, Pages, Connect to Git, pick the repo, build command `sh scripts/build-site.sh`, output directory `www`. Largest file is 24.7 MB, under Cloudflare's 25 MiB limit.
 

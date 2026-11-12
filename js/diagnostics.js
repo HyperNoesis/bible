@@ -38,7 +38,7 @@
     const st = (typeof window.VS.diagState === 'function') ? (window.VS.diagState() || {}) : {};
     const out = {
       time: new Date().toISOString(),
-      build: 'genesis v0.64 (robust speed test, mask cleanup, forehead fade)',
+      build: 'genesis v0.84 (cross-origin isolation via service worker, GPU export, BiRefNet models)',
       userAgent: navigator.userAgent,
       device: (navigator.userAgentData && navigator.userAgentData.mobile != null ? 'mobile=' + navigator.userAgentData.mobile : '') +
         (navigator.userAgentData && navigator.userAgentData.platform ? ' platform=' + navigator.userAgentData.platform : ''),
