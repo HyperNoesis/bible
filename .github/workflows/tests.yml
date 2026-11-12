@@ -14,6 +14,8 @@ jobs:
         with: { node-version: 20 }
       - name: Restore big binaries (MODNet model, ORT wasm) if the repo does not carry them
         run: sh scripts/restore-big-files.sh
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }   # a Python whose site-packages is writable: two unit tests run `python3 -I`, which ignores user-site installs
       - name: Python packages three unit tests call (Pillow, OpenCV, NumPy)
         run: pip install -q pillow numpy opencv-python-headless
       - name: Unit tests (pure logic)
