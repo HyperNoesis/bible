@@ -1760,6 +1760,15 @@
   // ---- Step-down ladder (v0.50). Rules live in PerfProfile.decideLadderStep (unit_ladder.js); this only applies them. ----
   // Only acts while MODNet is the live engine. Never while recording/live. MODNet size changes are safe mid-run
   // (provider._configure re-reads longEdge every frame); the engine swap to MediaPipe mirrors backgroundUpgrade.
+  /** v0.86: a phone that proved too slow for the heavy model is remembered for a week, and a saved "MODNet" choice is put back to Auto,
+   *  so the next session starts on the light model at once instead of spending ~12 s on a slideshow first. */
+  function rememberSlowDevice(ms) {
+    try {
+      const t = Math.max(1, Math.round(ms || 0));
+      writeBench({ modnetMs: t, rvmMs: Math.round(t * 0.5), holdMs: 7 * 24 * 3600 * 1000, note: 'too slow for live matting' });
+      if (els.modelSelect && els.modelSelect.value !== 'auto') { els.modelSelect.value = 'auto'; localStorage.setItem(MODEL_PREF_KEY, 'auto'); }
+    } catch (e) {}
+  }
   async function ladderToMediaPipe() {
     if (ladderSwapping || !window.VS.MediaPipeSegmentationProvider) return;
     ladderSwapping = true;
@@ -1804,7 +1813,7 @@
       showBenchNote(why + ' (' + (/RVM/.test(segProvider.label || '') ? 'RVM' : 'MODNet') + ' ' + e + ' px).');
     };
     const note = (key, text) => { const n = performance.now(); if (!ladderNoted[key] || n - ladderNoted[key] > 30000) { ladderNoted[key] = n; segLogPush('hold', { why: key, floor: Math.round(floorFps * 10) / 10 }); if (text) showBenchNote(text); } };
-    if (segMsEma >= PP.HOPELESS_SEG_MS && ladderLow >= PP.HOPELESS_SECONDS) { segLogPush('to-light', { why: 'hopeless: mask needs ' + Math.round(segMsEma) + ' ms' }); ladderToMediaPipe(); return true; }   // v0.84
+    if (segMsEma >= PP.HOPELESS_SEG_MS && ladderLow >= PP.HOPELESS_SECONDS) { segLogPush('to-light', { why: 'hopeless: mask needs ' + Math.round(segMsEma) + ' ms' }); rememberSlowDevice(segMsEma); ladderToMediaPipe(); return true; }   // v0.84
     if (edge > 320) {              // full size is above rung 0: first step goes straight to 320
       if (ladderLow >= lowNeed && !busy) { applyEdge(320, 'Frame rate was low, so matting now runs smaller'); return true; }
       if (cam > 0 && recentFps < PP.LADDER_FLOOR_FPS && !modelBound) note('camera-bound', 'The camera is delivering ' + cam + ' fps, so that is the limit here, not the model. Matting quality is unchanged. A brighter room usually lets the camera run faster.');
@@ -1815,7 +1824,7 @@
     const d = PP.decideLadderStep({ rung: edge <= 256 ? 1 : 0, fps: recentFps, camFps: cam, segMs: segMsEma, lowSeconds: ladderLow, busy });
     if (d.action === 'step-down') {
       if (d.rung.engine === 'modnet') applyEdge(d.rung.longEdge, 'Still slow, so matting now runs smaller');
-      else { segLogPush('to-light', { why: 'mask needs ' + Math.round(segMsEma) + ' ms even at the smallest matting size' }); ladderToMediaPipe(); }
+      else { segLogPush('to-light', { why: 'mask needs ' + Math.round(segMsEma) + ' ms even at the smallest matting size' }); if (d.reason === 'hopeless' || segMsEma >= 400) rememberSlowDevice(segMsEma); ladderToMediaPipe(); }
       return true;
     }
     if (d.action === 'wait-busy') {

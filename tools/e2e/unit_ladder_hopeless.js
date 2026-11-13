@@ -19,4 +19,7 @@ d = PP.decideLadderStep({ ...base, rung: 2, fps: 0, lowSeconds: 20 });
 check('already on the light model: nothing to do', d.action !== 'step-down' || d.rung.engine !== 'modnet');
 d = PP.decideLadderStep({ rung: 0, fps: 30, camFps: 30, segMs: 40, lowSeconds: 0, busy: false });
 check('a healthy device is left alone', d.action === 'hold');
+check('a hopeless verdict is remembered for its own hold time (a week), not the 6 h default', PP.benchFresh({ at: Date.now() - 3 * 24 * 3600 * 1000, holdMs: 7 * 24 * 3600 * 1000 }) === true && PP.benchFresh({ at: Date.now() - 3 * 24 * 3600 * 1000 }) === false);
+d = PP.decideLadderStep({ ...base, fps: 0, lowSeconds: 2 });
+check('two slow one-second checks in a row are enough', d.action === 'step-down' && d.rung.engine === 'mediapipe');
 process.exit(fails ? 1 : 0);

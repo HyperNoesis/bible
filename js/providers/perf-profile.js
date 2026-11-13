@@ -122,7 +122,7 @@
     { id: 'mediapipe-light-lean', engine: 'mediapipe', longEdge: 0, effects: 'lean' },
   ];
   const HOPELESS_SEG_MS = 700;     // one mask slower than this = under about 1.4 fps
-  const HOPELESS_SECONDS = 3;      // ...for this many one-second checks in a row
+  const HOPELESS_SECONDS = 2;      // ...for this many one-second checks in a row
   const LADDER_FLOOR_FPS = 18;     // below this for LADDER_LOW_SECONDS in a row -> step down
   const LADDER_LOW_SECONDS = 4;
   const LADDER_MAX_FIRST_RUNG = { low: 2, standard: 0 }; // a 'low' tier device starts at modnet-256
@@ -197,7 +197,7 @@
   /** A saved speed-test verdict is only trusted for maxAgeMs (default 6 h): a bad reading (hot phone, busy moment) must not pin a phone to the light model for good. */
   const BENCH_MAX_AGE_MS = 6 * 3600 * 1000;
   function benchFresh(b, now, maxAgeMs) {
-    return !!b && typeof b.at === 'number' && ((now == null ? Date.now() : now) - b.at) < (maxAgeMs || BENCH_MAX_AGE_MS) && ((now == null ? Date.now() : now) - b.at) >= 0;
+    return !!b && typeof b.at === 'number' && ((now == null ? Date.now() : now) - b.at) < (maxAgeMs || b.holdMs || BENCH_MAX_AGE_MS) && ((now == null ? Date.now() : now) - b.at) >= 0;
   }
   /** CPU threads for ORT-web. Phones have a few fast cores and many slow ones: more than 2 threads usually land on slow cores and starve the page, so phones are capped at 2. */
   function wasmThreads(cores, isolated, mobile, forceOne) {

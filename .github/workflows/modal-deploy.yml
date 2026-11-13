@@ -51,4 +51,5 @@ jobs:
         run: |
           modal deploy gpu/modal_app.py 2>&1 | tee deploy.log
           url=$(grep -o 'https://[^ ]*modal.run' deploy.log | head -1)
+          echo "::notice title=Studio Export URL::$url"
           { echo "### Studio Export is deployed"; echo; echo "URL for js/config.js renderRelayUrl: \`$url\`"; echo; echo "Health check: $url/health"; } >> "$GITHUB_STEP_SUMMARY"
