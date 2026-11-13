@@ -14,9 +14,12 @@ const models = { 'selfie_segmenter_landscape.tflite': 'selfie_segmenter_landscap
   fs.copyFileSync(path.join(pkg, bundle), path.join(tmp, 'vision_bundle.js'));
   for (const f of fs.readdirSync(path.join(pkg, 'wasm'))) fs.copyFileSync(path.join(pkg, 'wasm', f), path.join(tmp, 'wasm', f));
   for (const [name, p] of Object.entries(models)) {
-    const r = await fetch(base + p); if (!r.ok) throw new Error(name + ' HTTP ' + r.status);
-    const buf = Buffer.from(await r.arrayBuffer()); if (buf.length < 100000) throw new Error(name + ' too small');
-    fs.writeFileSync(path.join(tmp, name), buf);
+    // v0.87: a model that cannot be fetched no longer throws away the (much bigger) wasm bundle: the app falls back to the CDN for just that 0.25 MB file.
+    try {
+      const r = await fetch(base + p); if (!r.ok) throw new Error(name + ' HTTP ' + r.status);
+      const buf = Buffer.from(await r.arrayBuffer()); if (buf.length < 100000) throw new Error(name + ' too small');
+      fs.writeFileSync(path.join(tmp, name), buf);
+    } catch (e) { console.warn('vendor-tasks: ' + name + ' not bundled (' + e.message + '); the app will fetch just this file at runtime.'); }
   }
   fs.rmSync(out, { recursive: true, force: true }); fs.renameSync(tmp, out);
   console.log('vendor-tasks OK:', fs.readdirSync(out).join(', '), '| wasm:', fs.readdirSync(path.join(out, 'wasm')).join(', '));
