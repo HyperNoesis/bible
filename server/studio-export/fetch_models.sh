@@ -14,5 +14,10 @@ get https://github.com/ZhengPeng7/BiRefNet/releases/download/v1/BiRefNet-matting
 get https://github.com/ZhengPeng7/BiRefNet/releases/download/v1/BiRefNet-portrait-epoch_150.pth BiRefNet-portrait.pth
 get https://github.com/ZhengPeng7/BiRefNet/releases/download/v1/BiRefNet-general-epoch_244.onnx birefnet.onnx
 [ "${SKIP_REFERENCE:-0}" = "1" ] || get https://github.com/pq-yang/MatAnyone2/releases/download/v1.0.0/matanyone2.pth matanyone2.pth
+# v0.84 optional: SAM 2.1 Tiny (Apache-2.0) for --tracker. Run: WITH_SAM2=1 ./fetch_models.sh   (NOT hash-checked: add its SHA-256 to weights/SHA256SUMS after the first download)
+if [ "${WITH_SAM2:-0}" = "1" ]; then
+  get https://dl.fbaipublicfiles.com/sam2/sam2.1_hiera_tiny.pt sam2.1_hiera_tiny.pt
+  python3 -c "import sam2" 2>/dev/null || echo "also run: pip install git+https://github.com/facebookresearch/sam2.git"
+fi
 echo "NOTE: MatAnyone 2 (S-Lab licence) is for measuring only. Do not use its output in a paid product without a written commercial licence."
 ( cd weights && sha256sum -c --ignore-missing SHA256SUMS ) && echo "all weights verified"

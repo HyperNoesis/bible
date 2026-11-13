@@ -20,3 +20,7 @@ safetensors
 # omegaconf
 # cython
 # gitpython
+# v0.84 optional: hand refinement (--hands auto uses it when installed)
+# mediapipe
+# v0.84 optional: SAM 2.1 tracker gate (--tracker auto|on); weights via WITH_SAM2=1 ./fetch_models.sh
+# git+https://github.com/facebookresearch/sam2.git

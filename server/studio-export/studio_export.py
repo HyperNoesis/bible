@@ -141,16 +141,46 @@ def mux_audio(src, video, out):
 
 
 def clean_alpha(frames, a, device, progress):
-    """BiRefNet on every frame, then flow-guided temporal fusion. Returns (alpha list, backend string)."""
+    """BiRefNet on every frame -> optional hand-crop refinement -> optional SAM 2.1 tracker gate -> flow-guided temporal fusion.
+    Returns (fused alpha list, raw alpha list, backend string, extra stats dict)."""
     from birefnet_runner import BiRefNetRunner
+    import hands_refine as H
+    import tracker_gate as TG
     runner = BiRefNetRunner(HERE, onnx_path=a.birefnet_onnx, pth_name=WEIGHTS.get(a.mask_model, "BiRefNet-matting.pth"), size=a.size)
     say(stage="matting", backend=runner.backend, engine="clean")
-    raw = []
+    if getattr(a, "tta", False):                      # flip test-time augmentation: average the prediction on the frame and its mirror (2x slower, cleaner edges)
+        _one = runner.alpha
+        runner.alpha = lambda f, _o=_one: np.ascontiguousarray(0.5 * (_o(f) + _o(np.ascontiguousarray(f[:, ::-1]))[:, ::-1]))
+        say(note="flip TTA on")
+    refiner = H.make_refiner(runner, a, say)
+    raw, extra = [], {}
     for i, fr in enumerate(frames):
-        raw.append(runner.alpha(fr))
-        progress(0.9 * (i + 1) / len(frames))
-    fused = T.fuse_sequence(raw, frames, bidirectional=not a.causal) if not a.no_temporal else raw
-    return fused, raw, runner.backend
+        al = runner.alpha(fr)
+        raw.append(refiner(fr, al, i) if refiner else al)
+        progress(0.8 * (i + 1) / len(frames))
+    if refiner:
+        extra["hands"] = dict(refiner.stats)
+        if refiner.last_error:
+            extra["hands_last_error"] = refiner.last_error
+        refiner.close()
+    gated = raw
+    if a.tracker != "off":
+        try:
+            ckpt = a.sam2_checkpoint or os.path.join(HERE, "weights", "sam2.1_hiera_tiny.pt")
+            if not os.path.exists(ckpt):
+                raise FileNotFoundError(f"SAM 2.1 checkpoint not found: {ckpt} (see fetch_models.sh --sam2)")
+            start = a.start_frame if a.start_frame >= 0 else L.pick_start_frame(frames)
+            say(stage="tracking", start=start)
+            tr = TG.Sam2Tracker(ckpt, device=device)
+            masks = tr.masks(frames, raw[start], start, progress=lambda x: progress(0.8 + 0.1 * x))
+            gated, st = TG.gate_sequence(raw, masks)
+            extra["tracker"] = st
+        except Exception as e:
+            if a.tracker == "on":
+                raise SystemExit(f"--tracker on failed: {e}")
+            say(note=f"tracker gate skipped: {e}")
+    fused = T.fuse_sequence(gated, frames, bidirectional=not a.causal) if not a.no_temporal else gated
+    return fused, raw, runner.backend, extra
 
 
 def main(a):
@@ -163,11 +193,11 @@ def main(a):
     say(stage="reading", device=device, engine=a.engine)
     frames, fps = read_frames(a.input, a.max_size)
     n = len(frames)
-    raw_alpha = None
+    raw_alpha, extra = None, {}
     if a.engine == "clean":
         def p1(x):
             say(progress=round(min(0.95, x), 3), stage="matting")
-        alpha, raw_alpha, _ = clean_alpha(frames, a, device, p1)
+        alpha, raw_alpha, _, extra = clean_alpha(frames, a, device, p1)
     else:
         say(note="engine matanyone2 = reference/benchmark only (non-commercial licence, see docs/MODEL_DECISION_v0_82.md)")
         start = a.start_frame if a.start_frame >= 0 else L.pick_start_frame(frames)
@@ -218,6 +248,7 @@ def main(a):
     res = dict(stage="done", progress=1.0, seconds=round(time.time() - t0, 1), flicker=round(L.temporal_flicker(alpha), 4), frames=n, out=a.output, engine=a.engine)
     if raw_alpha is not None:
         res["flicker_before_fusion"] = round(L.temporal_flicker(raw_alpha), 4)
+    res.update(extra)
     say(**res)
 
 
@@ -244,4 +275,11 @@ if __name__ == "__main__":
     p.add_argument("--warmup", type=int, default=10)
     p.add_argument("--erode", type=int, default=10)
     p.add_argument("--dilate", type=int, default=10)
+    p.add_argument("--hands", choices=["auto", "on", "off"], default="auto", help="re-run BiRefNet on a crop around each hand (MediaPipe Hands) for finger detail; auto = on when mediapipe is installed")
+    p.add_argument("--hands-mode", choices=["union", "replace"], default="union", help="union = crop can only ADD alpha (safest); replace = crop alpha wins inside the box (sharper, opens finger gaps)")
+    p.add_argument("--hands-pad", type=float, default=1.8, help="crop size as a multiple of the hand's landmark box")
+    p.add_argument("--hands-max", type=int, default=2, help="refine at most this many hands per frame (largest first)")
+    p.add_argument("--tta", action="store_true", help="flip test-time augmentation for BiRefNet (2x slower, cleaner edges; used for student training labels)")
+    p.add_argument("--tracker", choices=["off", "auto", "on"], default="off", help="SAM 2.1 tracker gate: removes stray alpha away from the tracked person (single-subject clips). auto = skip quietly if SAM 2 is missing")
+    p.add_argument("--sam2-checkpoint", help="path to sam2.1_hiera_tiny.pt (default weights/sam2.1_hiera_tiny.pt)")
     main(p.parse_args())

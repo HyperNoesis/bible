@@ -34,3 +34,7 @@ then set `renderRelayUrl` in js/config.js as described in docs/LIVE_RELAY_SETUP.
 
 ## v0.83
 Bundled: BiRefNet matting + portrait (.pth), BiRefNet general (.onnx), MatAnyone 2 (reference only, non-commercial). Default = matting weights through torch at 1024 px. No real-model run has been done yet (see CHANGELOG-v0_83-models-bundled.md).
+
+## v0.84: hands and tracker
+`--hands auto|on|off` re-runs BiRefNet on a crop around each hand for finger detail (needs `pip install mediapipe`). `--tracker on` gates stray alpha with a
+SAM 2.1 tracker (single subject; `WITH_SAM2=1 ./fetch_models.sh`). See CHANGELOG-v0_84-hands-and-tracker.md. Both are unrun on real footage.
