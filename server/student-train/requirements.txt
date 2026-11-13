@@ -1,0 +1,9 @@
+torch>=2.5
+torchvision
+numpy<2
+opencv-python
+scipy
+onnx
+onnxscript
+onnxruntime        # onnxruntime-gpu on the GPU box is fine; the gate times CPU
+# make_teacher_data.py also needs the ../studio-export requirements (BiRefNet etc.); mediapipe optional for hand-crop labels
