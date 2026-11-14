@@ -22,7 +22,7 @@
   var frame = document.getElementById('previewFrame');
   if (!frame) return;
 
-  var CRIT = /crashed|feed lost|could not start|cutout unavailable|permission|denied|not supported/i;
+  var CRIT = /crashed|feed lost|could not start|cutout unavailable|permission|denied|not supported|black picture/i;
   var PERF_MS = 8000, ADV_STABLE_MS = 2500, ADV_SHOW_MS = 7000, ADV_REPEAT_MS = 90000, TICK_MS = 600;
 
   var banner = document.getElementById('degradeBanner');
