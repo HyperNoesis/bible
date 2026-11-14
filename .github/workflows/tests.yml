@@ -37,6 +37,8 @@ jobs:
         run: node tools/e2e/t44_threads_gate.js
       - name: Gate C - Enhance export (re-matting, duration/resolution, audio, resume, model cache)
         run: node tools/e2e/t42_enhance.js
+      - name: Gate F - matte edge quality on a synthetic person (alpha error, jaggedness, colour bleed)
+        run: node tools/e2e/t49_matte_edge_gate.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:

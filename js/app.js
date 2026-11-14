@@ -539,6 +539,7 @@
       edgeLo: 0.15 + 0.30 * c,
       edgeHi: 0.85 - 0.30 * c,
       despill: matteState.despill,
+      colourSnap: (function () { try { return localStorage.getItem('vs_snap') === '0' ? 0 : 0.8; } catch (e) { return 0.8; } })(),   // v0.89 colour-line edge correction; kill switch: localStorage vs_snap=0
     } });
   }
   pushMatte();

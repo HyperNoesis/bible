@@ -640,7 +640,7 @@ function renderFrame(personBitmap, maskBitmap, token) {
         const st = msg.state || {};
         if (st.mode === 'gl' || st.mode === 'legacy') matteMode = st.mode;
         if (glMatte) {
-          ['radius', 'sigmaR', 'edgeLo', 'edgeHi', 'despill', 'smoothBase', 'smoothAdapt', 'plateStrength'].forEach((k) => {
+          ['radius', 'sigmaR', 'edgeLo', 'edgeHi', 'despill', 'colourSnap', 'smoothBase', 'smoothAdapt', 'plateStrength'].forEach((k) => {
             if (typeof st[k] === 'number') glMatte[k] = st[k];
           });
         }
