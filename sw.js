@@ -6,7 +6,7 @@
 
 // Bump on every deploy that touches js/*, css/*, or SHELL_ASSETS — this is
 // what forces an already-installed client to drop stale cached files.
-const SHELL_CACHE = 'genesis-shell-v118';
+const SHELL_CACHE = 'genesis-shell-v119';
 const RUNTIME_CACHE = 'genesis-runtime-v10';
 
 const SHELL_ASSETS = [
@@ -44,7 +44,7 @@ const SHELL_ASSETS = [
   'js/audio-ui.js', 'js/auth.js', 'js/ba-capture.js', 'js/benchmark.js',
   'js/blindtest.js', 'js/brand-core.js', 'js/call.js', 'js/cam.js',
   'js/camera-bridge-client.js', 'js/camera-control.js', 'js/config.example.js', 'js/config.js',
-  'js/design-system.js', 'js/desklabel.js', 'js/dev-gate.js', 'js/diagnostics.js',
+  'js/design-system.js', 'js/desklabel.js', 'js/dev-gate.js', 'js/diagnostics.js', 'js/flags.js',
   'js/editor.js', 'js/effects-speed.js', 'js/enhance-core.js', 'js/enhance.js',
   'js/error-boundary.js', 'js/face-fit-core.js', 'js/first-run.js', 'js/genesis-design.js',
   'js/gesture-control.js', 'js/golive-core.js', 'js/golive.js', 'js/grade-core.js',

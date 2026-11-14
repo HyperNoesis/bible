@@ -539,10 +539,11 @@
       edgeLo: 0.15 + 0.30 * c,
       edgeHi: 0.85 - 0.30 * c,
       despill: matteState.despill,
-      colourSnap: (function () { try { return localStorage.getItem('vs_snap') === '0' ? 0 : 0.8; } catch (e) { return 0.8; } })(),   // v0.89 colour-line edge correction; kill switch: localStorage vs_snap=0
+      colourSnap: (function () { try { if (localStorage.getItem('vs_snap') === '0') return 0; } catch (e) {} const F = window.VS.Flags; return F ? F.get('colourSnap') : 0.8; })(),   // v0.89 colour-line edge correction; kill switches: localStorage vs_snap=0 (this device) or flags.json colourSnap (everyone, v0.90)
     } });
   }
   pushMatte();
+  if (window.VS.Flags) window.VS.Flags.ready.then(pushMatte);   // v0.90: re-send once flags.json has been read
   rendererSend({ type: 'matteQuery' });
 
   const envProvider = new window.VS.StaticEnvironmentProvider();

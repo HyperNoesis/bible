@@ -1,9 +1,75 @@
 {
-  "_note": "Gates for tools/e2e/t49_matte_edge_gate.js, set at about 1.4x the values measured on the v0.89 shader (software GL, seeded synthetic scene, so deterministic). 'lowc' (person colour ~ wall colour) is held at the OLD shader's level: colour tricks must not make that case worse. Synthetic only.",
-  "clean-256": { "alphaMAE": 0.02, "jagged": 0.025, "bleed": 5.5, "compMAE": 4.5 },
-  "clean-160": { "alphaMAE": 0.02, "jagged": 0.025, "bleed": 8.5, "compMAE": 6.0 },
-  "hard-256":  { "alphaMAE": 0.025, "jagged": 0.026, "bleed": 7.5, "compMAE": 5.5 },
-  "hard-160":  { "alphaMAE": 0.06, "jagged": 0.027, "bleed": 8.0, "compMAE": 9.0 },
-  "lowc-256":  { "alphaMAE": 0.29, "jagged": 0.065, "bleed": 6.5, "compMAE": 26.5 },
-  "lowc-160":  { "alphaMAE": 0.43, "jagged": 0.06, "bleed": 8.0, "compMAE": 39.0 }
+  "_note": "Gates for tools/e2e/t49_matte_edge_gate.js, set at about 1.4x the values measured on the v0.89 shader (software GL, seeded synthetic scene, so deterministic). 'lowc' (person colour ~ wall colour) is held at the OLD shader's level: colour tricks must not make that case worse. Synthetic only. v0.90 adds dark, hair and motion scenes. These three are BASELINES (regression guards at ~1.4x measured), not quality targets: dark/motion are weak (alphaMAE 0.17-0.41 because a mask that is wrong by more than the colour edge can recover cannot be fixed by the shader) and hair strands are lost (0.065). Real fix = a better mask model, not more shader tricks.",
+  "clean-256": {
+    "alphaMAE": 0.02,
+    "jagged": 0.025,
+    "bleed": 5.5,
+    "compMAE": 4.5
+  },
+  "clean-160": {
+    "alphaMAE": 0.02,
+    "jagged": 0.025,
+    "bleed": 8.5,
+    "compMAE": 6.0
+  },
+  "hard-256": {
+    "alphaMAE": 0.025,
+    "jagged": 0.026,
+    "bleed": 7.5,
+    "compMAE": 5.5
+  },
+  "hard-160": {
+    "alphaMAE": 0.06,
+    "jagged": 0.027,
+    "bleed": 8.0,
+    "compMAE": 9.0
+  },
+  "lowc-256": {
+    "alphaMAE": 0.29,
+    "jagged": 0.065,
+    "bleed": 6.5,
+    "compMAE": 26.5
+  },
+  "lowc-160": {
+    "alphaMAE": 0.43,
+    "jagged": 0.06,
+    "bleed": 8.0,
+    "compMAE": 39.0
+  },
+  "dark-256": {
+    "alphaMAE": 0.38,
+    "jagged": 0.085,
+    "bleed": 10.8,
+    "compMAE": 25.6
+  },
+  "dark-160": {
+    "alphaMAE": 0.571,
+    "jagged": 0.076,
+    "bleed": 11.9,
+    "compMAE": 35.9
+  },
+  "hair-256": {
+    "alphaMAE": 0.091,
+    "jagged": 0.064,
+    "bleed": 7.3,
+    "compMAE": 11.7
+  },
+  "hair-160": {
+    "alphaMAE": 0.094,
+    "jagged": 0.062,
+    "bleed": 10.0,
+    "compMAE": 13.0
+  },
+  "motion-256": {
+    "alphaMAE": 0.334,
+    "jagged": 0.072,
+    "bleed": 8.5,
+    "compMAE": 36.8
+  },
+  "motion-160": {
+    "alphaMAE": 0.238,
+    "jagged": 0.064,
+    "bleed": 8.5,
+    "compMAE": 27.6
+  }
 }

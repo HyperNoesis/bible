@@ -30,16 +30,36 @@ const GATES = JSON.parse(fs.readFileSync(path.join(__dirname, 'matte_edge_gates.
   await page.addScriptTag({ path: MATTE });
   const res = await page.evaluate(async (PARAMS) => {
     const W = 1280, H = 720;
-    let F0 = [205, 150, 125]; const B0 = [115, 185, 125], BN = [40, 40, 170];
-    const gtC = document.createElement('canvas'); gtC.width = W; gtC.height = H;
-    const g = gtC.getContext('2d', { willReadFrequently: true });
-    g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.fillStyle = '#fff';
-    g.beginPath(); g.ellipse(640, 270, 150, 190, 0, 0, Math.PI * 2); g.fill();                 // head
-    g.beginPath(); g.ellipse(640, 760, 400, 270, 0, 0, Math.PI * 2); g.fill();                 // shoulders
-    g.save(); g.translate(1010, 420); g.rotate(0.55); g.fillRect(-45, -170, 90, 340); g.restore(); // diagonal arm
-    const gd = g.getImageData(0, 0, W, H).data;
-    const gtA = new Float32Array(W * H);
-    for (let i = 0; i < W * H; i++) gtA[i] = gd[i * 4] / 255;
+    let F0 = [205, 150, 125], B0 = [115, 185, 125]; const BN = [40, 40, 170];
+    let gtC, gtA;
+    let band = new Uint8Array(W * H);
+    const RB = 8;   // fixed band: every pixel within RB px of the true edge
+    const buildGT = (hair) => {
+      gtC = document.createElement('canvas'); gtC.width = W; gtC.height = H;
+      const g = gtC.getContext('2d', { willReadFrequently: true });
+      g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.fillStyle = '#fff';
+      g.beginPath(); g.ellipse(640, 270, 150, 190, 0, 0, Math.PI * 2); g.fill();                 // head
+      g.beginPath(); g.ellipse(640, 760, 400, 270, 0, 0, Math.PI * 2); g.fill();                 // shoulders
+      g.save(); g.translate(1010, 420); g.rotate(0.55); g.fillRect(-45, -170, 90, 340); g.restore(); // diagonal arm
+      if (hair) {   // fine strands (1.2-2.6 px wide, anti-aliased) leaving the top of the head: the case segmenters round off
+        let hs = 777; const hr = () => { hs = (hs * 1664525 + 1013904223) >>> 0; return hs / 4294967296; };
+        g.strokeStyle = '#fff'; g.lineCap = 'round';
+        for (let k = 0; k < 70; k++) {
+          const ang = Math.PI * (1.12 + 0.76 * hr()), len = 25 + 45 * hr();
+          const x0 = 640 + 148 * Math.cos(ang), y0 = 270 + 188 * Math.sin(ang);
+          g.lineWidth = 1.2 + 1.4 * hr(); g.beginPath(); g.moveTo(x0, y0);
+          g.quadraticCurveTo(x0 + Math.cos(ang) * len * 0.5 + (hr() - 0.5) * 18, y0 + Math.sin(ang) * len * 0.5, x0 + Math.cos(ang) * len + (hr() - 0.5) * 24, y0 + Math.sin(ang) * len);
+          g.stroke();
+        }
+      }
+      const gd = g.getImageData(0, 0, W, H).data;
+      gtA = new Float32Array(W * H);
+      for (let i = 0; i < W * H; i++) gtA[i] = gd[i * 4] / 255;
+      const e0 = new Uint8Array(W * H), tmp = new Uint8Array(W * H); band = new Uint8Array(W * H);
+      for (let i = 0; i < W * H; i++) if (gtA[i] > 0.01 && gtA[i] < 0.99) e0[i] = 1;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let f = 0; for (let k = -RB; k <= RB && !f; k++) { const xx = x + k; if (xx >= 0 && xx < W && e0[y * W + xx]) f = 1; } tmp[y * W + x] = f; }
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let f = 0; for (let k = -RB; k <= RB && !f; k++) { const yy = y + k; if (yy >= 0 && yy < H && tmp[yy * W + x]) f = 1; } band[y * W + x] = f; }
+    };
     const Fat = (x, y) => { const s = (((x + y) >> 5) & 1) ? 12 : -12; return [F0[0] + s, F0[1] + s * 0.7, F0[2] + s * 0.5]; };
     const Bat = (x, y) => { const k = (x / W - 0.5) * 16; return [B0[0] + k, B0[1] - k * 0.5, B0[2] + k * 0.3]; };
     const makeFrame = (noise) => {
@@ -55,22 +75,20 @@ const GATES = JSON.parse(fs.readFileSync(path.join(__dirname, 'matte_edge_gates.
       fx.putImageData(fim, 0, 0);
       return frame;
     };
-    // fixed band: every pixel within RB px of the true edge
-    const RB = 8, e0 = new Uint8Array(W * H), tmp = new Uint8Array(W * H), band = new Uint8Array(W * H);
-    for (let i = 0; i < W * H; i++) if (gtA[i] > 0.01 && gtA[i] < 0.99) e0[i] = 1;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let f = 0; for (let k = -RB; k <= RB && !f; k++) { const xx = x + k; if (xx >= 0 && xx < W && e0[y * W + xx]) f = 1; } tmp[y * W + x] = f; }
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let f = 0; for (let k = -RB; k <= RB && !f; k++) { const yy = y + k; if (yy >= 0 && yy < H && tmp[yy * W + x]) f = 1; } band[y * W + x] = f; }
-
     const out = {};
-    const scenarios = [{ name: 'clean', noise: 1.2, halo: false }, { name: 'hard', noise: 6, halo: true }, { name: 'lowc', noise: 3, halo: true, f0: [100, 170, 120] }];   // lowc: person colour almost equal to the wall
+    const scenarios = [{ name: 'clean', noise: 1.2, halo: false }, { name: 'hard', noise: 6, halo: true }, { name: 'lowc', noise: 3, halo: true, f0: [100, 170, 120] },   // lowc: person colour almost equal to the wall
+      { name: 'dark', noise: 9, halo: true, f0: [70, 50, 42], b0: [38, 62, 42] },   // dark room: low light, heavy sensor noise
+      { name: 'hair', noise: 3, halo: false, hair: true },                          // fine strands the small mask rounds off
+      { name: 'motion', noise: 3, halo: false, lag: 14 }];                          // person moving: the model mask is 14 px (frame) behind the picture
     for (const sc of scenarios) {
-      F0 = sc.f0 || [205, 150, 125];
+      F0 = sc.f0 || [205, 150, 125]; B0 = sc.b0 || [115, 185, 125];
+      buildGT(!!sc.hair);
       const frame = makeFrame(sc.noise);
       for (const MW of [256, 160]) {
         const MH = Math.round(MW * H / W);
         const mc = document.createElement('canvas'); mc.width = MW; mc.height = MH;
         const mt = mc.getContext('2d', { willReadFrequently: true });
-        mt.imageSmoothingQuality = 'high'; mt.filter = 'blur(1.2px)'; mt.drawImage(gtC, 0, 0, MW, MH); mt.filter = 'none';
+        mt.imageSmoothingQuality = 'high'; mt.filter = 'blur(1.2px)'; mt.drawImage(gtC, -(sc.lag || 0) * MW / W, 0, MW, MH); mt.filter = 'none';
         const md = mt.getImageData(0, 0, MW, MH); const mo = mt.createImageData(MW, MH);
         for (let i = 0; i < MW * MH; i++) {
           let v = md.data[i * 4] / 255;
