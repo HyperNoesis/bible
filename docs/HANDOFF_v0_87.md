@@ -28,3 +28,8 @@ Three GitHub tokens and no Modal token were pasted in chat. Delete all GitHub to
 ## Update v0.88 (13 Nov 2026)
 - Gate C root cause found and fixed: the v0.80 person-crop returns masks of varying size, which broke the offline Enhance export (edge error 100 vs 18, NaN flicker, resume reusing 1 frame). js/enhance.js now sets `seg.useRoi = false`. Bisected: v0.79 passes 13/13, v0.80 fails 3, fixed build passes 13/13 locally.
 - The stage now shows "Loading the cutout engine..." with elapsed seconds and a slow-connection hint instead of a black rectangle.
+
+## Update v0.89 (14 Nov 2026): root cause of the "worse and worse" start-ups
+- BUG (mine, since v0.84): in sw.js the isolation wrapper iso() took the response body BEFORE the copy for the cache was cloned, so every cache.put threw "body already used" and the runtime cache stayed EMPTY. The engine files (about 6 MB, more with the bundled Tasks files) were re-downloaded on every start. On a slow phone connection that exceeded the fixed 15 s load limit, so the cutout failed to start. Verified: runtime cache 0 entries before, 11 after; second start makes 0 engine requests.
+- Also fixed: the new loading message stayed on screen over a working studio (now hidden when running); the 15 s limit is now 30 s (fast link) or 3 minutes (slow link) and carries on by itself; a camera that gives a black picture now says so.
+- Lesson: bisecting only on a fast local network missed this; test start-up on a throttled link and check the cache.

@@ -979,6 +979,7 @@
     videoNativeH = els.video.videoHeight || dims.height;
     setCanvasSize(quality); // re-derive real output size now that native video dims are known
     showRawCamera(); // v0.13: the person sees themselves NOW; the cutout fades in when it is ready
+    watchBlackCamera();
 
     // Per-run FAST state. Every camera start begins at full mask refresh and
     // re-adapts from measured FPS, so a device that recovered (other apps
@@ -1019,7 +1020,11 @@
     } else {
       segProvider = new (VSNS.MediaPipeSegmentationProvider || VSNS.MODNetSegmentationProvider || VSNS.RVMSegmentationProvider)();
     }
-    const loadTimeout = (VSNS.MODNetSegmentationProvider && segProvider instanceof VSNS.MODNetSegmentationProvider) ? MODNET_LOAD_TIMEOUT_MS : MODEL_LOAD_TIMEOUT_MS;
+    const cn0 = navigator.connection || {};
+    const slowNet = /^(slow-2g|2g|3g)$/.test(cn0.effectiveType || '') || (cn0.downlink > 0 && cn0.downlink < 5) || cn0.saveData === true;
+    // v0.89: a hard 15 s limit made every first start on a slow phone connection fail ("Timed out ... Press Stop"). The one-time engine download now
+    // gets up to 3 minutes on a slow link (progress is shown on the stage) and 30 s on a fast one; it carries on by itself as soon as it finishes.
+    const loadTimeout = (VSNS.MODNetSegmentationProvider && segProvider instanceof VSNS.MODNetSegmentationProvider) ? MODNET_LOAD_TIMEOUT_MS : (slowNet ? 180000 : 30000);
     segProvider.lowLightBoost = lowLightBoostEnabled;
     if (els.previewHint) els.previewHint.textContent = 'Camera on · loading cutout model';
     showStageLoading('Camera is on. Loading the cutout engine...');
@@ -1061,6 +1066,7 @@
     }
 
     running = true;
+    hideStageLoading();      // v0.89: the loading message used to stay on screen over a working studio
     updateStudioChrome();
     els.stopBtn.disabled = false;
     els.recordBtn.disabled = false;
@@ -1092,6 +1098,7 @@
 
   function stopCamera() {
     hideStageLoading();
+    clearInterval(blackWatchTimer);
     running = false;
     try { stopGestures(); } catch (e) {}
     updateStudioChrome();
@@ -1180,6 +1187,32 @@
 
   // ---- v0.13: raw camera first, then fade into the cutout. Never an empty scene, never a blank screen.
   let rawStartAt = 0, revealed = true, rawHoldTimer = null;
+  // v0.89: a camera that is "on" but gives a black picture (another tab or app holds it, or the lens is covered) looked exactly like a broken app.
+  let blackWatchTimer = null, blackWarned = false;
+  function watchBlackCamera() {
+    clearInterval(blackWatchTimer); blackWarned = false;
+    let strikes = 0; const c = document.createElement('canvas'); c.width = 16; c.height = 12;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    blackWatchTimer = setInterval(() => {
+      try {
+        if (!stream) { clearInterval(blackWatchTimer); return; }
+        const tr = stream.getVideoTracks()[0];
+        x.drawImage(els.video, 0, 0, 16, 12);
+        const d = x.getImageData(0, 0, 16, 12).data; let sum = 0;
+        for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
+        const luma = sum / (d.length / 4) / 3;
+        strikes = ((luma < 3 && els.video.readyState >= 2) || (tr && tr.muted)) ? strikes + 1 : 0;
+        if (strikes >= 4 && !blackWarned) {
+          blackWarned = true;
+          els.degradeBanner.classList.add('show');
+          els.degradeBanner.textContent = 'Your camera is giving a black picture. Another Genesis tab or camera app may be using it, or the lens is covered. Close other tabs and camera apps, then press Stop and Start.';
+        } else if (strikes === 0 && blackWarned) {
+          blackWarned = false;
+          if ((els.degradeBanner.textContent || '').startsWith('Your camera is giving')) els.degradeBanner.classList.remove('show');
+        }
+      } catch (e) { /* cosmetic watchdog only */ }
+    }, 1000);
+  }
   function showRawCamera() {
     rawStartAt = performance.now();
     revealed = false;

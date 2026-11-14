@@ -6,7 +6,7 @@
 
 // Bump on every deploy that touches js/*, css/*, or SHELL_ASSETS — this is
 // what forces an already-installed client to drop stale cached files.
-const SHELL_CACHE = 'genesis-shell-v116';
+const SHELL_CACHE = 'genesis-shell-v117';
 const RUNTIME_CACHE = 'genesis-runtime-v10';
 
 const SHELL_ASSETS = [
@@ -112,7 +112,8 @@ self.addEventListener('fetch', (event) => {
     // change in place, so after the first visit Studio starts without downloading anything.
     event.respondWith(
       caches.match(req).then((cached) => (cached ? iso(cached) : fetch(req).then((res) => {
-        if (res && res.ok) caches.open(RUNTIME_CACHE).then((c) => c.put(req, res.clone()));
+        // v0.89: clone BEFORE iso() takes the body. Cloning later (inside the .then) threw "body already used", so nothing was ever cached since v0.84.
+        if (res && res.ok) { const copy = res.clone(); caches.open(RUNTIME_CACHE).then((c) => c.put(req, copy)).catch(() => {}); }
         return iso(res);
       })))
     );
@@ -125,7 +126,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(req)
         .then((res) => {
-          if (res && res.ok) caches.open(SHELL_CACHE).then((c) => c.put(req, res.clone()));
+          if (res && res.ok) { const copy = res.clone(); caches.open(SHELL_CACHE).then((c) => c.put(req, copy)).catch(() => {}); }
           return iso(res);
         })
         .catch(() => caches.match(req).then(iso))
