@@ -15,7 +15,7 @@
 //        MATTE_PARAMS='{"sigmaR":0.1}' node ...      override matte fields (for tuning)
 //        node ... --report                           print only, never fail
 const fs = require('fs'), path = require('path');
-const { chromium } = require(process.env.PW_LIB || '/home/claude/.npm-global/lib/node_modules/playwright');
+const { chromium } = require(process.env.PW_LIB || 'playwright');
 const MATTE = process.env.MATTE_JS || path.resolve(__dirname, '..', '..', 'js', 'providers', 'gl-matte.js');
 const REPORT_ONLY = process.argv.includes('--report');
 const PARAMS = JSON.parse(process.env.MATTE_PARAMS || '{}');
