@@ -81,11 +81,12 @@
   let ladderRetries = 0;       // automatic second looks after a runtime step-down to the light model (max 2 per camera session)
   let upgradeRetried = false;  // one automatic re-test per camera session after a slow verdict
   /** Load MODNet while the camera is already live; swap it in only if this device runs it fast enough. */
-  /** Which live matting engines may be tried, best first. vs_live_engine: 'auto' (default) = RVM then MODNet; 'rvm' | 'modnet' = only that one; 'light' = never upgrade. */
+  /** Which live matting engines may be tried, best first. vs_live_engine: 'auto' (default) = RVM then MODNet; 'rvm' | 'modnet' | 'student' = only that one ('student' = your own trained model in models/genesis_student.onnx, never part of auto); 'light' = never upgrade. */
   function upgradeCandidates() {
     const V = window.VS; let pref = 'auto'; try { pref = localStorage.getItem('vs_live_engine') || 'auto'; } catch (e) {}
     const list = [];
     if (pref === 'light') return list;
+    if (pref === 'student' && V.StudentWorkerProvider && V.StudentWorkerProvider.isSupported()) list.push({ name: 'Student', key: 'student', make: () => new V.StudentWorkerProvider() });
     if ((pref === 'auto' || pref === 'rvm') && V.RVMWorkerProvider && V.RVMWorkerProvider.isSupported()) list.push({ name: 'RVM', key: 'rvm', make: () => new V.RVMWorkerProvider() });
     if ((pref === 'auto' || pref === 'modnet') && V.MODNetSegmentationProvider) list.push({ name: 'MODNet', key: 'modnet', make: makeModnet });
     return list;

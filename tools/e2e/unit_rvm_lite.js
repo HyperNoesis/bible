@@ -11,6 +11,11 @@ t('all sizes are multiples of 16', [[1280, 720, 320], [1920, 1080, 448], [640, 3
 t('downsample 448 -> 0.375, small inputs -> 1', P.downsampleFor(448, 336) === 0.375 && P.downsampleFor(160, 120) === 1);
 const wk = fs.readFileSync(path.join(R, 'js/providers/rvm-worker.js'), 'utf8');
 t('worker uses the same downsample rule (168 / long edge)', /Math\.min\(1, 168 \/ Math\.max\(w, h\)\)/.test(wk));
-t('worker checks the model has the RVM inputs', /'src', 'downsample_ratio'/.test(wk));
+t('worker requires src + recurrent state; downsample_ratio only when the model has it', /\['src', \.\.\.REC_NAMES\]/.test(wk) && /if \(hasDs\) feeds\.downsample_ratio/.test(wk));
 t('worker is WASM-only', /executionProviders: \['wasm'\]/.test(wk));
+t('student sizes are multiples of 32', [[1280, 720, 320], [640, 480, 448], [500, 700, 256]].every(([w, h, e]) => P.sizeFor(w, h, e, 32).every((v) => v % 32 === 0)), P.sizeFor(640, 480, 448, 32));
+t('RVM default step still 16', JSON.stringify(P.sizeFor(640, 480, 448)) === '[448,336]');
+t('student provider declared, own model path, not RVM', /class StudentWorkerProvider extends RVMWorkerProvider/.test(src) && /genesis_student\.onnx/.test(src));
+const app = fs.readFileSync(path.join(R, 'js/app.js'), 'utf8');
+t("'student' is opt-in only (never listed for auto)", /pref === 'student' && V\.StudentWorkerProvider/.test(app) && !/pref === 'auto' \|\| pref === 'student'/.test(app));
 process.exit(bad ? 1 : 0);

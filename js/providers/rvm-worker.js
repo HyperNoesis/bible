@@ -10,7 +10,7 @@
  * Cost control: the network analyses a DOWNSCALED copy (downsample_ratio) and refines the alpha back up to the size we send, so the
  * work stays almost constant while the output gets sharper. ds = min(1, 168 / longEdge), the same rule as RVMWorkerProvider.downsampleFor. */
 'use strict';
-let session = null, rec = null, curW = 0, curH = 0;
+let session = null, rec = null, curW = 0, curH = 0, hasDs = true;   // hasDs: RVM takes downsample_ratio, the Genesis student does not
 const REC_NAMES = ['r1i', 'r2i', 'r3i', 'r4i'];
 function downsampleFor(w, h) { return Math.min(1, 168 / Math.max(w, h)); }
 function zeroState() { return REC_NAMES.map(() => new ort.Tensor('float32', new Float32Array([0]), [1, 1, 1, 1])); }
@@ -26,7 +26,8 @@ async function init(m) {
   const bytes = new Uint8Array(await res.arrayBuffer());
   if (bytes.byteLength < 1000000) throw new Error('RVM model file too small');
   session = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'], graphOptimizationLevel: 'all', extra: { session: { intra_op: { allow_spinning: '0' } } } });
-  for (const n of ['src', 'downsample_ratio', ...REC_NAMES]) if (!session.inputNames.includes(n)) throw new Error('RVM model has no input ' + n);
+  for (const n of ['src', ...REC_NAMES]) if (!session.inputNames.includes(n)) throw new Error('RVM model has no input ' + n);
+  hasDs = session.inputNames.includes('downsample_ratio');
   rec = zeroState(); curW = 0; curH = 0;
 }
 
@@ -35,7 +36,8 @@ async function run(m) {
   if (w !== curW || h !== curH) { rec = zeroState(); curW = w; curH = h; }   // a new size invalidates the memory's shape
   const chw = new Float32Array(3 * size);
   for (let i = 0; i < size; i++) { chw[i] = data[i * 4] / 255; chw[size + i] = data[i * 4 + 1] / 255; chw[2 * size + i] = data[i * 4 + 2] / 255; }
-  const feeds = { src: new ort.Tensor('float32', chw, [1, 3, h, w]), downsample_ratio: new ort.Tensor('float32', new Float32Array([downsampleFor(w, h)]), [1]) };
+  const feeds = { src: new ort.Tensor('float32', chw, [1, 3, h, w]) };
+  if (hasDs) feeds.downsample_ratio = new ort.Tensor('float32', new Float32Array([downsampleFor(w, h)]), [1]);
   REC_NAMES.forEach((n, i) => { feeds[n] = rec[i]; });
   const out = await session.run(feeds);
   rec = [out.r1o, out.r2o, out.r3o, out.r4o];
