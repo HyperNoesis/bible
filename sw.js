@@ -60,7 +60,7 @@ const SHELL_ASSETS = [
   'js/providers/rvm-provider.js', 'js/providers/rvm-worker.js', 'js/providers/scene-engine.js', 'js/providers/scene-library.js',
   'js/providers/scene-meta.js', 'js/providers/segmentation-provider.js', 'js/providers/storage-provider.js', 'js/providers/stream-provider.js',
   'js/qr.js', 'js/rec-extras.js', 'js/remote.js', 'js/render-core.js',
-  'js/render-ui.js', 'js/render-worker.js', 'js/scene-wizard.js', 'js/seg-presets.js', 'js/seg-diagnostics.js',
+  'js/render-ui.js', 'js/render-worker.js', 'js/scene-wizard.js', 'js/seg-presets.js', 'js/seg-diagnostics.js', 'js/stage-calm.js',
   'js/show-core.js', 'js/show.js', 'js/storage.js', 'js/studio-check.js',
   'js/studio-shell.js', 'js/studio-ux.js', 'js/supabase-loader.js', 'js/teleprompter.js',
   'js/templates.js', 'js/trim.js', 'js/worklets/lufs-worklet.js', 'js/worklets/rnnoise-worklet.js',

@@ -3201,3 +3201,13 @@ input::placeholder,textarea::placeholder{color:var(--g-quiet)!important;opacity:
 #studioShell .ux-advice{background:rgba(9,13,20,.78);color:#f1f4fb;border:1px solid rgba(255,255,255,.16);box-shadow:none}
 /* The step guide and the warning toast share the bottom of the stage: the warning wins */
 #studioShell .preview-frame:has(.degrade-toast.show) .ux-guide{display:none}
+
+/* ---- Studio calm: one message at a time on the preview (see js/stage-calm.js). Presentation only. ---- */
+#previewFrame[data-stage-msg="critical"] .ux-advice,
+#previewFrame[data-stage-msg="loading"] .ux-advice,
+#previewFrame[data-stage-msg="perf"] .ux-advice,
+#previewFrame[data-stage-msg="loading"] .degrade-toast:not([data-critical]) { display: none !important; }
+.degrade-toast.calm-dismissed, .ux-advice.calm-hidden { display: none !important; }
+#previewFrame[data-stage-msg]:not([data-stage-msg="none"]) .preview-hint { opacity: 0; transition: opacity .2s; }
+/* chips: only what needs attention; "Good" and "Measuring" are noise */
+.ux-chip[data-tone="good"], .ux-chip[data-tone="idle"] { display: none; }

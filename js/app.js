@@ -45,7 +45,7 @@
     try {
       const host = els.canvas && els.canvas.parentElement; if (!host) return;
       if (!loadOverlayEl) {
-        loadOverlayEl = document.createElement('div'); loadOverlayEl.setAttribute('role', 'status'); loadOverlayEl.setAttribute('aria-live', 'polite');
+        loadOverlayEl = document.createElement('div'); loadOverlayEl.className = 'stage-loading'; loadOverlayEl.setAttribute('role', 'status'); loadOverlayEl.setAttribute('aria-live', 'polite');
         loadOverlayEl.style.cssText = 'position:absolute;left:12px;right:12px;bottom:14%;z-index:30;padding:14px 16px;border-radius:14px;background:rgba(10,14,22,.82);color:#fff;font:600 15px/1.35 system-ui,sans-serif;text-align:center;pointer-events:none';
         if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
         host.appendChild(loadOverlayEl);
