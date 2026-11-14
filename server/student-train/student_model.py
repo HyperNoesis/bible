@@ -1,4 +1,4 @@
-"""Genesis live matting student (v0.85): a recurrent matting network written from scratch for this project.
+"""Genesis live matting student (v0.91): a recurrent matting network written from scratch for this project.
 
 Not RVM code (RVM is GPL-3.0). The ideas are common knowledge (a mobile CNN encoder, a context block, a decoder with ConvGRU memory at
 several scales, a full-resolution refinement head); the code, the layout and the weights are ours. Encoder: torchvision MobileNetV3 (BSD-3 code,

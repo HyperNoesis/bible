@@ -1,4 +1,4 @@
-"""Tracker gate (v0.84): use a SAM 2.1 video tracker (Apache-2.0) as a STEADY, coarse "where is the person" mask, and remove BiRefNet
+"""Tracker gate (v0.90): use a SAM 2.1 video tracker (Apache-2.0) as a STEADY, coarse "where is the person" mask, and remove BiRefNet
 alpha that falls outside it. BiRefNet decides every frame alone, so now and then a patch of background or a bystander lights up for a
 frame or two; the tracker follows one object through the clip and does not do that. The gate only SUBTRACTS (it never adds alpha), it
 is dilated so hair and fingers beyond SAM's coarse mask survive, and it switches itself off on any frame where the tracker and
@@ -8,7 +8,7 @@ Single-subject clips: a second person is outside the tracker's prompt and would 
 (min_keep) to switch the gate off. For two-person clips leave --tracker off.
 
 gate_alpha / gate_sequence / bbox_from_alpha are numpy + OpenCV only and unit-tested. Sam2Tracker needs the sam2 package and a
-checkpoint and was NOT run in the sandbox that wrote it (see CHANGELOG-v0_84).
+checkpoint and was NOT run in the sandbox that wrote it (see CHANGELOG-v0_90).
 """
 import os
 import numpy as np

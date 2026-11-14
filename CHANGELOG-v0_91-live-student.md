@@ -1,5 +1,5 @@
-# v0.85 — live student (distillation pipeline) + teacher flip-TTA. RVM STAYS until the gate says PROMOTE.
-Apply on top of v0.84 (copy over the project, same paths). Export server and training only: the browser app is untouched, RVM is untouched.
+# v0.91 — live student (distillation pipeline) + teacher flip-TTA. RVM STAYS until the gate says PROMOTE.
+Apply on top of v0.90 and the repo main, v0.88 or later (copy over the project, same paths). Export server and training only: the browser app is untouched, RVM is untouched.
 
 ## New: server/student-train/
 1. student_model.py: recurrent matting net written from scratch (MobileNetV3 encoder, context block, ConvGRU memory at 4 scales, full-res refinement head),
@@ -16,7 +16,7 @@ Apply on top of v0.84 (copy over the project, same paths). Export server and tra
 ## Changed: server/studio-export/studio_export.py: new `--tta` (flip test-time augmentation for the BiRefNet pass).
 
 ## Verified (sandbox, CPU, no GPU)
-test_student.py 35/35; the v0.84 export tests still pass; a CPU training run learns the synthetic clips (val MAD 0.50 -> 0.23 in 160 steps); ONNX matches PyTorch to 7e-7;
+test_student.py 35/35; the v0.90 export tests still pass; a CPU training run learns the synthetic clips (val MAD 0.50 -> 0.23 in 160 steps); ONNX matches PyTorch to 7e-7;
 the gate runs end-to-end against the real models/rvm_mobilenetv3_fp32.onnx and models/modnet.onnx and correctly answers KEEP_RVM for the barely-trained model; run_all.sh stage/resume flow dry-run.
 A real bug was found and fixed in this pass: resuming an interrupted stage re-ran the full step count (now runs only what is left; regression test added).
 ## NOT verified

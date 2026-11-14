@@ -1,4 +1,4 @@
-# v0.84 — export teacher: hand-crop refinement + SAM 2.1 tracker gate (apply on top of v0.83)
+# v0.90 — export teacher: hand-crop refinement + SAM 2.1 tracker gate (apply on top of the repo main, v0.88 or later)
 Copy the files over the project, same paths. Export server only; the browser app is untouched.
 
 ## What changed (server/studio-export/)

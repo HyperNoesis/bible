@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Turn ordinary videos into student training clips, labelled by the TEACHER (the v0.84 clean export pipeline):
+"""Turn ordinary videos into student training clips, labelled by the TEACHER (the v0.90 clean export pipeline):
    BiRefNet-matting (MIT) [+ flip test-time augmentation] -> hand-crop refinement -> optional SAM 2.1 gate -> flow-guided temporal fusion.
 The labels are therefore steady, edge-accurate alphas that no live model can produce itself. The student learns to imitate them.
 

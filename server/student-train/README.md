@@ -1,7 +1,7 @@
-# Genesis live matting student (v0.85)
+# Genesis live matting student (v0.91)
 
 A recurrent matting network (MobileNetV3 encoder, ConvGRU memory at 4 scales, full-resolution refinement head, 3.8 M params, 1.6 M with `--backbone small`)
-that **learns from the offline teacher** (BiRefNet-matting + flip-TTA + hand crops + temporal fusion, the v0.84 export pipeline) and runs live in the browser.
+that **learns from the offline teacher** (BiRefNet-matting + flip-TTA + hand crops + temporal fusion, the v0.90 export pipeline) and runs live in the browser.
 It is written from scratch; no RVM code or weights. **RVM stays in the app until `promote_gate.py` says PROMOTE** (rules below). Nothing here has been trained on real data yet.
 
 ## Why this is the strongest clean option

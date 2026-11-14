@@ -1,4 +1,4 @@
-"""Hand refinement for the clean export engine (v0.84).
+"""Hand refinement for the clean export engine (v0.90).
 
 Why: a full-frame BiRefNet pass squeezes a 1080 x 1920 frame into 1024 x 1024, so a hand ends up about 80 px wide and the fingers
 are soft, merged or missing. Here MediaPipe Hands (Apache-2.0) finds the hands, each hand is cut out with context, BiRefNet runs on
@@ -156,7 +156,7 @@ def blend_crop(full, crop_alpha, box, mode="union", gate=0.25, feather=0.2, inpl
 # ---------------------------------------------------------------- detection + the per-frame refiner
 class HandDetector:
     """MediaPipe Hands (Apache-2.0) wrapper: frame RGB uint8 -> list of (21, 2) normalised landmark arrays.
-    Needs `pip install mediapipe`. NOT run in the sandbox that wrote it (see CHANGELOG-v0_84)."""
+    Needs `pip install mediapipe`. NOT run in the sandbox that wrote it (see CHANGELOG-v0_90)."""
 
     def __init__(self, max_hands=4, complexity=1, min_conf=0.4):
         import mediapipe as mp
