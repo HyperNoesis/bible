@@ -62,6 +62,16 @@ void main() {
 }`;
 
   // Pass B(+C): guided upsample, tighten, decontaminate, plate assist.
+  // v0.89: edge colour handling rebuilt (see CHANGELOG-v0_89-edges-fringe.md). The alpha upsample itself is unchanged: on the synthetic
+  // gate (tools/e2e/unit_matte_edge.js) the old bilateral weights were already the best of the variants tried.
+  //  - Decontamination: the old estimate of the background colour came from cell averages that already hold person colour, and it was
+  //    driven by the TIGHTENED alpha (1.0 on a rim pixel that is really 70% person), so the rim kept its background tint (the pale-green
+  //    fringe). Edge pixels now take their colour from confident interior person pixels found 1-3 mask cells inward, driven by the raw
+  //    (un-tightened) alpha. The old unmixing stays as a fallback when no interior sample is found.
+  //  - Colour snap (uSnap): where the mask edge is uncertain, the pixel's colour is projected on the line between the local interior
+  //    colour F and the local exterior colour B. That moves alpha toward 0 for pixels that look like the wall (model halo) and toward
+  //    1 for pixels that look like the person (clipped edge). Skipped where F and B are too alike, where the pixel is off that line
+  //    (stripe, highlight, hair), or when uSnap = 0.
   const FRAG_UP = `#version 300 es
 precision highp float;
 uniform sampler2D uGuide;   // full-res camera frame (mipmapped)
@@ -75,6 +85,7 @@ uniform float uSigmaR;      // colour similarity; lower = edges follow image det
 uniform float uLo;
 uniform float uHi;
 uniform float uDespill;     // 0..1 edge colour decontamination
+uniform float uSnap;        // 0..1 colour-line alpha correction at the mask edge
 uniform float uPlateStrength;
 uniform float uHavePlate;
 out vec4 outColor;
@@ -90,6 +101,8 @@ void main() {
   float sum = 0.0, wsum = 0.0;
   vec3 bgSum = vec3(0.0);
   float bgW = 0.0;
+  float sw = 0.0, swm = 0.0;               // spatial-only mask average (inward direction + edge test)
+  vec2 sc = vec2(0.0), sm = vec2(0.0);
   float inv2s = 1.0 / (2.0 * uSigmaR * uSigmaR);
 
   for (int j = -uRadius; j <= uRadius; j++) {
@@ -108,28 +121,75 @@ void main() {
       float wb = ws * (1.0 - m);
       bgSum += wb * cs;
       bgW += wb;
+      vec2 off = cen - pm;
+      sw += ws; swm += ws * m; sc += ws * off; sm += ws * m * off;
     }
   }
 
-  float a = sum / wsum;
+  float aRaw = sum / wsum;
+
+  // Local interior (F) and exterior (B) colours, only near the mask edge.
+  float mAvg = swm / max(sw, 0.0001);
+  vec2 pull = sm - mAvg * sc;              // points toward higher mask values
+  float pl = length(pull);
+  bool nearEdge = (uDespill > 0.0 || uSnap > 0.0) && mAvg > 0.02 && mAvg < 0.985 && pl > 0.02;
+  vec3 Fn = vec3(0.0), Bn = vec3(0.0);
+  float Fw = 0.0, Bw = 0.0;
+  if (nearEdge) {
+    vec2 dirTex = (pull / pl) / uMaskSize;
+    for (int k = 1; k <= 3; k++) {
+      float s = 0.4 + 0.8 * float(k);                       // 1.2, 2.0, 2.8 mask cells away
+      float wd = 1.0 / (1.0 + 0.3 * float(k));
+      vec2 pf = t + dirTex * s;
+      float mf = texture(uMask, pf).r;
+      float wf = smoothstep(0.90, 1.0, mf) * wd;
+      Fn += wf * textureLod(uGuide, pf, max(0.0, uLod - 1.0)).rgb;
+      Fw += wf;
+      vec2 pb = t - dirTex * s;
+      float mb = texture(uMask, pb).r;
+      float wbk = (1.0 - smoothstep(0.0, 0.10, mb)) * wd;
+      Bn += wbk * textureLod(uGuide, pb, max(0.0, uLod - 1.0)).rgb;
+      Bw += wbk;
+    }
+  }
+  vec3 Fv = Fn / max(Fw, 0.0001);
+  vec3 Bv = Bn / max(Bw, 0.0001);
+
+  // colour snap: alpha from the position of the pixel colour on the F-B line
+  if (nearEdge && uSnap > 0.0 && Fw > 0.1 && Bw > 0.1) {
+    vec3 dFB = Fv - Bv;
+    float L2 = dot(dFB, dFB);
+    vec3 cq = textureLod(uGuide, t, max(0.0, uLod - 2.0)).rgb;   // lightly blurred pixel: sensor noise must not move alpha
+    float sep = smoothstep(0.02, 0.08, L2);                 // F and B must differ enough to tell apart
+    float ac = clamp(dot(cq - Bv, dFB) / max(L2, 0.0001), 0.0, 1.0);
+    float fit = 1.0 - smoothstep(0.04, 0.12, length(cq - (Bv + ac * dFB)));   // pixel must sit on the line
+    ac = smoothstep(0.10, 0.95, ac);
+    aRaw = mix(aRaw, ac, uSnap * sep * fit);
+  }
+
+  float a = aRaw;
 
   // C. clean-plate assist: only in uncertain zone, never on confident person pixels
   if (uHavePlate > 0.5) {
     float diff = length(c0 - texture(uPlate, t).rgb);
-    float pl = smoothstep(0.06, 0.18, diff);
+    float pl2 = smoothstep(0.06, 0.18, diff);
     float uncertain = 1.0 - smoothstep(0.80, 0.98, a);
-    a *= mix(1.0, pl, uPlateStrength * uncertain);
+    a *= mix(1.0, pl2, uPlateStrength * uncertain);
   }
 
   a = smoothstep(uLo, uHi, a);
 
-  // Edge colour decontamination: C = a*F + (1-a)*B  =>  F = (C - (1-a)*B) / a
+  // Edge colour decontamination. A rim pixel is C = aTrue*F + (1-aTrue)*B; we want F. aTrue is close to aRaw, not to the tightened a.
   vec3 fg = c0;
-  if (uDespill > 0.0 && bgW > 0.001) {
-    vec3 B = bgSum / bgW;
-    vec3 F = clamp((c0 - (1.0 - a) * B) / max(a, 0.3), 0.0, 1.0);
-    float edge = clamp(4.0 * a * (1.0 - a), 0.0, 1.0);
-    fg = mix(c0, F, uDespill * edge);
+  if (uDespill > 0.0 && aRaw > 0.02 && aRaw < 0.995) {
+    vec3 Fun = c0;                                          // unmix: F = (C - (1-a)*B) / a, with the measured exterior colour when we have it
+    vec3 Bu = (Bw > 0.1) ? Bv : ((bgW > 0.001) ? bgSum / bgW : c0);
+    Fun = clamp((c0 - (1.0 - aRaw) * Bu) / max(aRaw, 0.3), 0.0, 1.0);
+    // Trust the unmix only while it agrees with the interior colour (noise and alpha error blow it up); otherwise use the interior colour.
+    float trust = (Fw > 0.1) ? 1.0 - smoothstep(0.06, 0.16, length(Fun - Fv)) : 1.0;
+    vec3 F = (Fw > 0.1) ? mix(Fv, Fun, trust) : Fun;
+    float k = clamp(uDespill * 1.4, 0.0, 1.0) * (1.0 - smoothstep(0.90, 1.0, aRaw));
+    fg = mix(c0, F, k);
   }
   outColor = vec4(fg * a, a);
 }`;
@@ -141,6 +201,7 @@ void main() {
       // Tunables (all changeable live via render-core 'setMatte')
       this.radius = 1;          // 1 = fast (3x3), 2 = quality (5x5)
       this.sigmaR = 0.12;
+      this.colourSnap = 0.8;    // 0 = off; see FRAG_UP
       this.edgeLo = 0.30;
       this.edgeHi = 0.70;
       this.despill = 0.6;
@@ -172,7 +233,7 @@ void main() {
         this._progUp = this._program(VERT, FRAG_UP);
         this._uS = this._uniforms(this._progSmooth, ['uNew', 'uPrev', 'uMaskSize', 'uBase', 'uAdapt', 'uReset']);
         this._uU = this._uniforms(this._progUp, ['uGuide', 'uMask', 'uPlate', 'uRes', 'uMaskSize', 'uLod', 'uRadius',
-          'uSigmaR', 'uLo', 'uHi', 'uDespill', 'uPlateStrength', 'uHavePlate']);
+          'uSigmaR', 'uSnap', 'uLo', 'uHi', 'uDespill', 'uPlateStrength', 'uHavePlate']);
 
         this._texGuide = this._tex(gl.LINEAR_MIPMAP_LINEAR, gl.LINEAR);
         this._texMaskIn = this._tex(gl.LINEAR, gl.LINEAR);
@@ -322,6 +383,7 @@ void main() {
       gl.uniform1f(this._uU.uLod, Math.max(0, Math.log2(Math.max(1, w / mw))));
       gl.uniform1i(this._uU.uRadius, this.radius >= 2 ? 2 : 1);
       gl.uniform1f(this._uU.uSigmaR, this.sigmaR);
+      gl.uniform1f(this._uU.uSnap, this.colourSnap);
       gl.uniform1f(this._uU.uLo, this.edgeLo);
       gl.uniform1f(this._uU.uHi, this.edgeHi);
       gl.uniform1f(this._uU.uDespill, this.despill);

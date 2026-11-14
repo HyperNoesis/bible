@@ -1,0 +1,9 @@
+{
+  "_note": "Gates for tools/e2e/t49_matte_edge_gate.js, set at about 1.4x the values measured on the v0.89 shader (software GL, seeded synthetic scene, so deterministic). 'lowc' (person colour ~ wall colour) is held at the OLD shader's level: colour tricks must not make that case worse. Synthetic only.",
+  "clean-256": { "alphaMAE": 0.02, "jagged": 0.025, "bleed": 5.5, "compMAE": 4.5 },
+  "clean-160": { "alphaMAE": 0.02, "jagged": 0.025, "bleed": 8.5, "compMAE": 6.0 },
+  "hard-256":  { "alphaMAE": 0.025, "jagged": 0.026, "bleed": 7.5, "compMAE": 5.5 },
+  "hard-160":  { "alphaMAE": 0.06, "jagged": 0.027, "bleed": 8.0, "compMAE": 9.0 },
+  "lowc-256":  { "alphaMAE": 0.29, "jagged": 0.065, "bleed": 6.5, "compMAE": 26.5 },
+  "lowc-160":  { "alphaMAE": 0.43, "jagged": 0.06, "bleed": 8.0, "compMAE": 39.0 }
+}
