@@ -38,7 +38,7 @@
     const st = (typeof window.VS.diagState === 'function') ? (window.VS.diagState() || {}) : {};
     const out = {
       time: new Date().toISOString(),
-      build: 'genesis v0.87 (cutout engine bundled in the site, no CDN wait; slow phones start light)',
+      build: 'genesis v0.88 (Enhance export fixed, visible loading message, engine bundled)',
       userAgent: navigator.userAgent,
       device: (navigator.userAgentData && navigator.userAgentData.mobile != null ? 'mobile=' + navigator.userAgentData.mobile : '') +
         (navigator.userAgentData && navigator.userAgentData.platform ? ' platform=' + navigator.userAgentData.platform : ''),

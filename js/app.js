@@ -39,6 +39,28 @@
   }
   function writeBench(b) { try { localStorage.setItem(BENCH_KEY, JSON.stringify(Object.assign({ v: 3, key: deviceKey(), at: Date.now() }, b))); } catch (e) {} }
   function showBenchNote(text) { if (els.modelBenchNote) els.modelBenchNote.textContent = text; }
+  // v0.88: while the cutout engine loads (the first visit downloads about 19 MB) show a real message on the stage, not a black rectangle.
+  let loadOverlayTimer = null, loadOverlayEl = null;
+  function showStageLoading(baseText) {
+    try {
+      const host = els.canvas && els.canvas.parentElement; if (!host) return;
+      if (!loadOverlayEl) {
+        loadOverlayEl = document.createElement('div'); loadOverlayEl.setAttribute('role', 'status'); loadOverlayEl.setAttribute('aria-live', 'polite');
+        loadOverlayEl.style.cssText = 'position:absolute;left:12px;right:12px;bottom:14%;z-index:30;padding:14px 16px;border-radius:14px;background:rgba(10,14,22,.82);color:#fff;font:600 15px/1.35 system-ui,sans-serif;text-align:center;pointer-events:none';
+        if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+        host.appendChild(loadOverlayEl);
+      }
+      const t0 = Date.now(), cn = navigator.connection || {};
+      const slow = /^(slow-2g|2g|3g)$/.test(cn.effectiveType || '') || (cn.downlink > 0 && cn.downlink < 1.5);
+      const render = () => {
+        const sec = Math.round((Date.now() - t0) / 1000);
+        loadOverlayEl.textContent = baseText + (sec >= 3 ? ' (' + sec + ' s)' : '') +
+          (sec >= 8 ? (slow ? ' Slow connection: this one-time download is about 19 MB and is saved for next time.' : ' The first start downloads the cutout engine once; later starts are instant.') : '');
+      };
+      clearInterval(loadOverlayTimer); render(); loadOverlayTimer = setInterval(render, 1000);
+    } catch (e) { /* cosmetic only */ }
+  }
+  function hideStageLoading() { clearInterval(loadOverlayTimer); loadOverlayTimer = null; if (loadOverlayEl && loadOverlayEl.parentElement) loadOverlayEl.parentElement.removeChild(loadOverlayEl); loadOverlayEl = null; }
   // ---- Preload: load + warm the segmentation engine while the page is idle, so Start feels instant ----
   let warm = null;
   function preloadProvider() {
@@ -1000,6 +1022,7 @@
     const loadTimeout = (VSNS.MODNetSegmentationProvider && segProvider instanceof VSNS.MODNetSegmentationProvider) ? MODNET_LOAD_TIMEOUT_MS : MODEL_LOAD_TIMEOUT_MS;
     segProvider.lowLightBoost = lowLightBoostEnabled;
     if (els.previewHint) els.previewHint.textContent = 'Camera on · loading cutout model';
+    showStageLoading('Camera is on. Loading the cutout engine...');
     try {
       await withTimeout(
         warmPromise ? warmPromise.then((ok) => (ok ? undefined : segProvider.initialize(quality))) : segProvider.initialize(quality),
@@ -1068,6 +1091,7 @@
   }
 
   function stopCamera() {
+    hideStageLoading();
     running = false;
     try { stopGestures(); } catch (e) {}
     updateStudioChrome();
@@ -1162,7 +1186,7 @@
     els.previewFrame.classList.remove('revealing');
     els.previewFrame.classList.add('raw-first');
     if (window.__vsT) window.__vsT.cameraVisible = rawStartAt;
-    hideOverlay();
+    hideOverlay(); hideStageLoading();
     if (els.previewHint) els.previewHint.textContent = 'Camera on · getting your cutout ready';
     clearTimeout(rawHoldTimer);
     // If the cutout has not produced a sane person mask within 6 s, reveal anyway (watchdog banner explains why).
@@ -1196,6 +1220,7 @@
     perfBannerShown = false; perfBannerKey = '';
     els.degradeBanner.classList.add('show');
     els.degradeBanner.textContent = 'The cutout could not start (' + message + '). Showing your camera. Press Stop, check your connection, then Start again.';
+    hideStageLoading();
     if (els.previewHint) els.previewHint.textContent = 'Camera on · cutout unavailable';
     if (window.VS.logError) window.VS.logError('model failed: ' + message);
   }

@@ -24,3 +24,7 @@ Three GitHub tokens and no Modal token were pasted in chat. Delete all GitHub to
 2. Create a Modal token and deploy Studio Export; then set renderRelayUrl, renderRelayToken and renderRelayLabel in js/config.js.
 3. Find why Gate C fails (open the red run in the Actions tab, copy the last 15 lines of the Gate C step).
 4. Smooth the jagged edges and the green fringe; replace RVM.
+
+## Update v0.88 (13 Nov 2026)
+- Gate C root cause found and fixed: the v0.80 person-crop returns masks of varying size, which broke the offline Enhance export (edge error 100 vs 18, NaN flicker, resume reusing 1 frame). js/enhance.js now sets `seg.useRoi = false`. Bisected: v0.79 passes 13/13, v0.80 fails 3, fixed build passes 13/13 locally.
+- The stage now shows "Loading the cutout engine..." with elapsed seconds and a slow-connection hint instead of a black rectangle.

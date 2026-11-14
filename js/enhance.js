@@ -61,7 +61,8 @@
       const W = v.videoWidth & ~1, H = v.videoHeight & ~1, plan = C.plan(v.duration, o.fps || 15), N = plan.frames, jobId = o.jobId || ('job-' + (o.blob.size || 0) + '-' + N + '-' + model.id);
       const seekTo = async (i) => { v.currentTime = Math.min(v.duration - 0.001, (i + 0.5) / plan.fps); await once(v, 'seeked'); };
       // 2. pass 1 - matte every frame with MODNet at the enhance size (resumable)
-      const seg = new VS.MODNetWorkerProvider(); await seg.initialize('balanced'); seg.longEdge = model.longEdge;
+      const seg = new VS.MODNetWorkerProvider(); seg.useRoi = false;   // v0.88: Enhance needs every frame's mask at ONE fixed size; the live person-crop (v0.80) returns masks of varying size and broke smoothing + resume
+      await seg.initialize('balanced'); seg.longEdge = model.longEdge;
       const alphas = new Array(N).fill(null); let resumed = 0, mw = 0, mh = 0; const job = await Jobs.getJob(jobId).catch(() => null);
       if (job && job.n === N) { mw = job.mw; mh = job.mh; for (let i = 0; i < N; i++) { const m = await Jobs.getMask(jobId, i).catch(() => null); if (m && m.length === mw * mh) { alphas[i] = m; resumed++; } } }
       const rd = document.createElement('canvas'), rx = rd.getContext('2d', { willReadFrequently: true });
