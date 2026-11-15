@@ -1,41 +1,58 @@
 name: Fetch candidate models (one-off)
 # Run by hand: Actions -> "Fetch candidate models (one-off)" -> Run workflow.
-# GitHub's runners have open internet (the AI sandbox does not), so this downloads the weights for the candidate models and attaches them to the
-# release "models-candidates" of this repo, with a SHA256SUMS file. Nothing is committed to git history and the website build ignores it.
-# A file that cannot be fetched is skipped with a warning (see the job summary); everything else is still uploaded.
+# GitHub's runners have open internet (the AI sandbox does not), so this downloads pretrained weights and attaches them to the release
+# "models-candidates", with SHA256SUMS. Files over 2 GB (GitHub's release limit) are NOT attached: server/studio-export/fetch_models.sh
+# downloads those straight from their source on the GPU machine. A file that cannot be fetched is skipped with a warning.
 on:
   workflow_dispatch:
-permissions: { contents: write }
+permissions:
+  contents: write
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - name: Download weights
         run: |
           mkdir -p dl && cd dl
           get() {
             name="$1"; url="$2"
-            if curl -fsSL --retry 3 --max-time 1500 -o "$name" "$url" && [ -s "$name" ]; then
-              echo "OK   $name  $(du -h "$name" | cut -f1)  <- $url" | tee -a "$GITHUB_STEP_SUMMARY"
+            if curl -fsSL --retry 3 --max-time 2400 -o "$name" "$url" && [ -s "$name" ]; then
+              echo "OK   $name  $(du -h "$name" | cut -f1)" | tee -a "$GITHUB_STEP_SUMMARY"
             else
-              rm -f "$name"; echo "::warning::could not fetch $name from $url"; echo "SKIP $name  <- $url" | tee -a "$GITHUB_STEP_SUMMARY"
+              rm -f "$name"; echo "::warning::could not fetch $name"; echo "SKIP $name  <- $url" | tee -a "$GITHUB_STEP_SUMMARY"
             fi
           }
-          # tracker / video segmentation
-          get sam2.1_hiera_tiny.pt   https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.pt
-          get edgetam.pt             https://huggingface.co/facebook/EdgeTAM/resolve/main/edgetam.pt
-          # speech (whisper.cpp ggml) for captions
-          get ggml-tiny.bin          https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
-          get ggml-base.bin          https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
-          # depth (already used offline for scene depth maps)
-          get depth_anything_v2_vits.onnx https://github.com/fabio-sim/Depth-Anything-ONNX/releases/download/v2.0.0/depth_anything_v2_vits.onnx
-          # SAM2Matting: weights location not known to the author of this file; add the URL here once you have it:
-          # get sam2matting.pth <URL>
-          ls -l; sha256sum * > SHA256SUMS 2>/dev/null || true
+          HF=https://huggingface.co
+          # live tracker (browser, ONNX): EdgeTAM (Apache-2.0) + SAM 2.1 tiny (Apache-2.0)
+          get edgetam_vision_encoder.onnx               $HF/onnx-community/EdgeTAM-ONNX/resolve/main/onnx/vision_encoder.onnx
+          get edgetam_vision_encoder.onnx_data          $HF/onnx-community/EdgeTAM-ONNX/resolve/main/onnx/vision_encoder.onnx_data
+          get edgetam_vision_encoder_fp16.onnx          $HF/onnx-community/EdgeTAM-ONNX/resolve/main/onnx/vision_encoder_fp16.onnx
+          get edgetam_vision_encoder_fp16.onnx_data     $HF/onnx-community/EdgeTAM-ONNX/resolve/main/onnx/vision_encoder_fp16.onnx_data
+          get edgetam_mask_decoder.onnx                 $HF/onnx-community/EdgeTAM-ONNX/resolve/main/onnx/prompt_encoder_mask_decoder.onnx
+          get edgetam_mask_decoder.onnx_data            $HF/onnx-community/EdgeTAM-ONNX/resolve/main/onnx/prompt_encoder_mask_decoder.onnx_data
+          get sam21t_vision_encoder.onnx                $HF/onnx-community/sam2.1-hiera-tiny-ONNX/resolve/main/onnx/vision_encoder.onnx
+          get sam21t_vision_encoder.onnx_data           $HF/onnx-community/sam2.1-hiera-tiny-ONNX/resolve/main/onnx/vision_encoder.onnx_data
+          get sam21t_mask_decoder.onnx                  $HF/onnx-community/sam2.1-hiera-tiny-ONNX/resolve/main/onnx/prompt_encoder_mask_decoder.onnx
+          get sam21t_mask_decoder.onnx_data             $HF/onnx-community/sam2.1-hiera-tiny-ONNX/resolve/main/onnx/prompt_encoder_mask_decoder.onnx_data
+          # best-edge single-image matting (MIT): BiRefNet lite, ONNX fp32 + fp16
+          get birefnet_lite.onnx                        $HF/onnx-community/BiRefNet_lite-ONNX/resolve/main/onnx/model.onnx
+          get birefnet_lite_fp16.onnx                   $HF/onnx-community/BiRefNet_lite-ONNX/resolve/main/onnx/model_fp16.onnx
+          # phone-native MODNet (Apache-2.0)
+          get modnet.tflite                             $HF/litert-community/MODNet-LiteRT/resolve/main/modnet.tflite
+          # GPU-server video matting (reference/benchmark engines)
+          get matanyone2.pth                            https://github.com/pq-yang/MatAnyone2/releases/download/v1.0.0/matanyone2.pth
+          get SAM2Matting-SAM2.1Tiny.pt                 $HF/FudanCVL/SAM2Matting/resolve/main/checkpoints/SAM2Matting-SAM2.1Tiny.pt
+          get SAM2Matting-SAM2.1Base+.pt                $HF/FudanCVL/SAM2Matting/resolve/main/checkpoints/SAM2Matting-SAM2.1Base+.pt
+          # Whisper (captions) and depth, already used elsewhere
+          get ggml-tiny.bin                             $HF/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
+          get depth_anything_v2_vits.onnx               https://github.com/fabio-sim/Depth-Anything-ONNX/releases/download/v2.0.0/depth_anything_v2_vits.onnx
+          ls -l
+          sha256sum * > SHA256SUMS
       - name: Publish as release assets
-        env: { GH_TOKEN: '${{ github.token }}' }
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           cd dl
           gh release view models-candidates --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create models-candidates --repo "$GITHUB_REPOSITORY" --title "Candidate model weights" --notes "Downloaded by .github/workflows/fetch-models.yml. See SHA256SUMS." --prerelease
-          gh release upload models-candidates ./* --clobber --repo "$GITHUB_REPOSITORY"
+          for f in ./*; do gh release upload models-candidates "$f" --clobber --repo "$GITHUB_REPOSITORY" || echo "::warning::upload failed for $f"; done
