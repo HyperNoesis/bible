@@ -1,0 +1,24 @@
+name: Inventory model sources (one-off)
+# Lists the real files, sizes and licences of the candidate model repos so the fetch workflow can use exact names.
+on:
+  workflow_dispatch:
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: List Hugging Face repos
+        run: |
+          for r in qualcomm/SINet qualcomm/EdgeTAM litert-community/MODNet-LiteRT FudanCVL/SAM2Matting SammyLim/VideoMaMa facebook/EdgeTAM facebook/sam2.1-hiera-tiny onnx-community/sam2.1-hiera-tiny-ONNX onnx-community/EdgeTAM-ONNX onnx-community/BiRefNet_lite-ONNX ZhengPeng7/BiRefNet_lite pq-yang/MatAnyone2; do
+            echo "=== HF $r" | tee -a "$GITHUB_STEP_SUMMARY"
+            python3 tools/inventory_hf.py "$r" 2>&1 | head -40 | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+      - name: GitHub releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for r in pq-yang/MatAnyone2 pq-yang/MatAnyone facebookresearch/EdgeTAM fabio-sim/Depth-Anything-ONNX ZHKKKe/MODNet vietanhdev/samexporter danielgatis/rembg; do
+            echo "=== GH $r" | tee -a "$GITHUB_STEP_SUMMARY"
+            gh api "repos/$r/releases" --jq '.[0:3][] | "  \(.tag_name): " + ([.assets[] | "\(.name) \(.size/1048576|floor)MB"] | join(", "))' 2>&1 | cut -c1-600 | tee -a "$GITHUB_STEP_SUMMARY"
+            gh api "repos/$r/license" --jq '"  licence: \(.license.spdx_id)"' 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          done
