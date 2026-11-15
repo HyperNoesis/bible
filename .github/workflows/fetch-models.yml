@@ -1,0 +1,41 @@
+name: Fetch candidate models (one-off)
+# Run by hand: Actions -> "Fetch candidate models (one-off)" -> Run workflow.
+# GitHub's runners have open internet (the AI sandbox does not), so this downloads the weights for the candidate models and attaches them to the
+# release "models-candidates" of this repo, with a SHA256SUMS file. Nothing is committed to git history and the website build ignores it.
+# A file that cannot be fetched is skipped with a warning (see the job summary); everything else is still uploaded.
+on:
+  workflow_dispatch:
+permissions: { contents: write }
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Download weights
+        run: |
+          mkdir -p dl && cd dl
+          get() {
+            name="$1"; url="$2"
+            if curl -fsSL --retry 3 --max-time 1500 -o "$name" "$url" && [ -s "$name" ]; then
+              echo "OK   $name  $(du -h "$name" | cut -f1)  <- $url" | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              rm -f "$name"; echo "::warning::could not fetch $name from $url"; echo "SKIP $name  <- $url" | tee -a "$GITHUB_STEP_SUMMARY"
+            fi
+          }
+          # tracker / video segmentation
+          get sam2.1_hiera_tiny.pt   https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.pt
+          get edgetam.pt             https://huggingface.co/facebook/EdgeTAM/resolve/main/edgetam.pt
+          # speech (whisper.cpp ggml) for captions
+          get ggml-tiny.bin          https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
+          get ggml-base.bin          https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
+          # depth (already used offline for scene depth maps)
+          get depth_anything_v2_vits.onnx https://github.com/fabio-sim/Depth-Anything-ONNX/releases/download/v2.0.0/depth_anything_v2_vits.onnx
+          # SAM2Matting: weights location not known to the author of this file; add the URL here once you have it:
+          # get sam2matting.pth <URL>
+          ls -l; sha256sum * > SHA256SUMS 2>/dev/null || true
+      - name: Publish as release assets
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          cd dl
+          gh release view models-candidates --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create models-candidates --repo "$GITHUB_REPOSITORY" --title "Candidate model weights" --notes "Downloaded by .github/workflows/fetch-models.yml. See SHA256SUMS." --prerelease
+          gh release upload models-candidates ./* --clobber --repo "$GITHUB_REPOSITORY"
