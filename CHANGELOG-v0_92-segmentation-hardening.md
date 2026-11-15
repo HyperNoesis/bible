@@ -23,3 +23,8 @@
 - WebGL2 matte-edge quality gate could not be run here because Playwright/WebGL2 were unavailable.
 
 Synthetic/unit verification is not a substitute for these end-to-end checks.
+
+## Shader tuning sweep (15 Nov 2026, WebGL2 gate run in a sandbox with software GL)
+Swept sigmaR, colourSnap, radius, edgeLo/edgeHi and despill with `MATTE_PARAMS` against all six Gate F scenes (mean alphaMAE over both mask sizes).
+Baseline 0.1661. Best combination (radius 2 + sigmaR 0.08) 0.1624, i.e. under 3% better, and radius 2 costs more GPU time. colourSnap 0.5 is worse on `hard` (0.028 -> 0.054). Weak scenes do not move: lowc 0.345 -> 0.341, dark 0.340 -> 0.330, motion 0.204 -> 0.202.
+Conclusion (VERIFIED on synthetic scenes only): the edge shader is not the lever for low-contrast, dark or lagging-mask cases; no defaults were changed. The remaining error comes from the mask itself, so improvement needs a better live mask model (distilled from BiRefNet on real consented footage), not more shader tuning.
