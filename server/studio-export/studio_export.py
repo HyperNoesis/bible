@@ -34,6 +34,28 @@ def say(**kw):
     print(json.dumps(kw), flush=True)
 
 
+def scaled_even_size(width, height, max_side):
+    """Return even (width, height), respecting max_side as the LONGEST side.
+
+    A value <= 0 disables downscaling. Keeping aspect ratio and scaling the
+    long edge (rather than the short edge) prevents unexpectedly huge exports.
+    """
+    width, height = int(width), int(height)
+    if width < 2 or height < 2:
+        raise ValueError("video frame dimensions must both be at least 2 pixels")
+    # Video encoders generally require even dimensions. Round the requested
+    # bound DOWN first so nearest-even output rounding can never exceed it.
+    requested_limit = int(max_side) if max_side and max_side > 0 else 0
+    even_limit = max(2, requested_limit - (requested_limit % 2)) if requested_limit else 0
+    scale = min(1.0, float(even_limit) / max(width, height)) if even_limit else 1.0
+    if scale >= 1.0:
+        out_w, out_h = width - width % 2, height - height % 2
+    else:
+        out_w = max(2, int(width * scale / 2.0 + 0.5) * 2)
+        out_h = max(2, int(height * scale / 2.0 + 0.5) * 2)
+    return out_w, out_h
+
+
 def read_frames(path, max_side):
     import cv2
     cap = cv2.VideoCapture(path)
@@ -48,9 +70,9 @@ def read_frames(path, max_side):
         if not ok:
             break
         h, w = bgr.shape[:2]
-        s = min(1.0, max_side / min(h, w)) if max_side > 0 else 1.0
-        if s < 1.0:
-            bgr = cv2.resize(bgr, (int(round(w * s / 2) * 2), int(round(h * s / 2) * 2)), interpolation=cv2.INTER_AREA)
+        target_w, target_h = scaled_even_size(w, h, max_side)
+        if (target_w, target_h) != (w, h):
+            bgr = cv2.resize(bgr, (target_w, target_h), interpolation=cv2.INTER_AREA)
         else:
             bgr = bgr[: h - h % 2, : w - w % 2]
         frames.append(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))

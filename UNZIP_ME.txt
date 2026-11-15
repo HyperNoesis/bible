@@ -1,0 +1,12 @@
+GENESIS v0.91 — based on the supplied v0.90 source, model/runtime and MediaPipe archives.
+
+This unified project includes the complete extracted contents of all three supplied v0.90 packages, plus the v0.91 fine-wisp mask-cleanup fix, regression test, reports and generated static site build (`www/`). The three input archives had no path collisions when merged.
+
+Build/rebuild the static site from this folder with:
+  npm run www
+
+Deploy the contents of `www/` to the static host, preserving directory structure. Do not deploy the project root in place of `www/` unless your host is configured to publish that subdirectory.
+
+Not included in the supplied v0.90 packages: .git history, node_modules, GPU-server BiRefNet/MatAnyone weights and vendor implementation, and untracked Android build outputs. The export E2E tests use a stand-in matte model; real server-side export weights must be obtained and licensed separately before that path can be considered operational.
+
+See GENESIS_SEGMENTATION_ROOT_CAUSE_REPORT.md, GENESIS_SEGMENTATION_IMPLEMENTATION_REPORT.md, GENESIS_SEGMENTATION_TEST_REPORT.md, and GENESIS_V0_91_DEPLOYMENT.md.

@@ -13,9 +13,12 @@ const RVM_LITE_MODEL = 'models/rvm_mobilenetv3_fp32.onnx';
 const RVM_LITE_EDGE = { fast: 320, balanced: 448, quality: 448 };   // long edge (px) of the picture sent to the model
 
 class RVMWorkerProvider extends window.VS.MODNetWorkerProvider {
-  constructor() { super(); this.label = 'RVM matting (background worker)'; this.engine = 'rvm'; this.useRoi = false; }   // RVM keeps a memory of the last frame: its input must keep one fixed shape, so no person crop here
+  constructor() { super(); this.label = 'RVM matting (background worker)'; this.engine = 'rvm'; this.useRoi = false; this._lastRvmFrameAt = null; this.resetAfterGapMs = 1200; }   // RVM keeps a memory of the last frame: its input must keep one fixed shape, so no person crop here
   /** Same rule as the worker: the model analyses ~168 px and refines the matte up to the size we send. */
-  static downsampleFor(w, h) { return Math.min(1, 168 / Math.max(w, h)); }
+  static downsampleFor(w, h, analysisEdge) {
+    const edge = [168, 224, 256, 320].includes(analysisEdge) ? analysisEdge : 168;
+    return Math.min(1, edge / Math.max(w, h));
+  }
   /** Model input size for a camera size and long edge (multiples of 16 so every internal stride lines up). */
   static sizeFor(vw, vh, longEdge) {
     const scale = Math.min(1, longEdge / Math.max(vw, vh));
@@ -29,11 +32,30 @@ class RVMWorkerProvider extends window.VS.MODNetWorkerProvider {
     opts = opts || {};
     this.longEdge = RVM_LITE_EDGE[qualityMode] || RVM_LITE_EDGE.balanced;
     const want = (opts.threads | 0) > 0 ? (opts.threads | 0) : RVMWorkerProvider.threadsFor();
-    await this._boot('js/providers/rvm-worker.js', (base) => ({ modelUrl: new URL(RVM_LITE_MODEL, base).href }), want);
+    // Default 168px analysis preserves the established live-performance
+    // profile. A deliberate local override enables controlled phone tests.
+    let requested = 168;
+    try { const saved = Number(localStorage.getItem('vs_rvm_analysis_edge')); if ([168, 224, 256, 320].includes(saved)) requested = saved; } catch (e) { /* private browsing: keep safe default */ }
+    this.analysisEdge = requested;
+    await this._boot('js/providers/rvm-worker.js', (base) => ({ modelUrl: new URL(RVM_LITE_MODEL, base).href, analysisEdge: requested }), want);
     this.usingWebGPU = false; this.initNote = ''; this._ready = true;
-    this.label = 'RVM matting (background worker, WASM' + (this.threads > 1 ? ' x' + this.threads : '') + ')';
+    this.label = 'RVM matting (background worker, WASM · ' + this.analysisEdge + 'px analysis' + (this.threads > 1 ? ' · x' + this.threads : '') + ')';
     this._mw = 0; this._mh = 0;
   }
-  async reset() { if (this._ready) await this._send({ type: 'reset' }); }
+  async segment(videoElement) {
+    const now = performance.now();
+    // A long capture pause is a temporal discontinuity. Do not let stale
+    // recurrent memory leak across camera restarts, app suspension, or a
+    // frozen stream. The worker serial queue guarantees reset precedes the
+    // next submitted frame.
+    if (this._ready && this._lastRvmFrameAt != null && now - this._lastRvmFrameAt > this.resetAfterGapMs) await this.reset();
+    this._lastRvmFrameAt = now;
+    try { return await super.segment(videoElement); }
+    catch (err) { this._lastRvmFrameAt = null; throw err; }
+  }
+  async reset() {
+    this._lastRvmFrameAt = null;
+    if (this._ready) await this._send({ type: 'reset' });
+  }
 }
 window.VS.RVMWorkerProvider = RVMWorkerProvider;

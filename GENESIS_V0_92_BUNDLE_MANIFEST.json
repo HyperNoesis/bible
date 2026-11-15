@@ -1,0 +1,45 @@
+{
+  "project": "Genesis Studio",
+  "version": "0.92",
+  "based_on": "0.91",
+  "date": "2026-11-15",
+  "source_file_count_excluding_www": 580,
+  "source_bytes_excluding_www": 127313029,
+  "www_file_count": 270,
+  "www_bytes": 124431211,
+  "input_path_collisions": 0,
+  "www_build_present": true,
+  "models_present": {
+    "MODNet": true,
+    "RVM": true,
+    "BiRefNet_export_weights": false,
+    "BiRefNet_vendor": false,
+    "MatAnyone2_export_weights": false
+  },
+  "verified_checks": {
+    "javascript_unit_suites": "44/44",
+    "rvm_worker_protocol": "10/10",
+    "rvm_provider_tests": "15/15",
+    "export_safety": "11/11",
+    "export_pipeline_logic": 20,
+    "export_scene_temporal_logic": 22,
+    "export_stand_in_e2e": 8,
+    "gpu_export_api": 32,
+    "onnx_fixture_model_runs": "RVM 4 profiles + MODNet 1 profile / 12 synthetic frames",
+    "javascript_syntax": "passed",
+    "python_compile": "passed",
+    "npm_run_www": "passed"
+  },
+  "known_unverified": [
+    "browser camera + real model integration and frame-mask skew measurements",
+    "Playwright/WebGL2 matte-edge gate",
+    "consented real-person footage with labelled alpha ground truth",
+    "physical Android FPS, latency, memory, battery, thermals and long-session stability",
+    "real BiRefNet export inference because vendor code and weights are absent",
+    "commercial licence and privacy review"
+  ],
+  "model_hashes": {
+    "rvm_mobilenetv3_fp32.onnx": "68e3f27c01a612789d2bd72630f3a177b3b5a0c13387471d7e3cf152c155e44f",
+    "modnet.onnx": "8ab20e3ff799e90f71fad2d6dc1f4e3b0dc7b18c1a9b7f545f358b095e4d4940"
+  }
+}

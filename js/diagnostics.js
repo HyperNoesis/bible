@@ -38,7 +38,7 @@
     const st = (typeof window.VS.diagState === 'function') ? (window.VS.diagState() || {}) : {};
     const out = {
       time: new Date().toISOString(),
-      build: 'genesis v0.90 (remote switch file, harder edge tests; v0.89: engine files cached, black-camera warning, cutout edge colour fix)',
+      build: 'genesis v0.92 (ordered RVM frames, analysis-edge profiling, export resize safety, hair-wisp cleanup)',
       userAgent: navigator.userAgent,
       device: (navigator.userAgentData && navigator.userAgentData.mobile != null ? 'mobile=' + navigator.userAgentData.mobile : '') +
         (navigator.userAgentData && navigator.userAgentData.platform ? ' platform=' + navigator.userAgentData.platform : ''),

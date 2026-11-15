@@ -1,0 +1,85 @@
+{
+  "fixture": "stylised synthetic person / 12 frames / ground-truth alpha",
+  "runtime": "bundled ONNX Runtime Web, WASM, one thread, Node.js",
+  "models": {
+    "rvm_mobilenetv3_fp32.onnx": "68e3f27c01a612789d2bd72630f3a177b3b5a0c13387471d7e3cf152c155e44f",
+    "modnet.onnx": "8ab20e3ff799e90f71fad2d6dc1f4e3b0dc7b18c1a9b7f545f358b095e4d4940"
+  },
+  "results": [
+    {
+      "engine": "rvm",
+      "analysisEdge": 168,
+      "firstFrameMs": 195.324,
+      "medianMs": 85.715,
+      "p95Ms": 126.009,
+      "samples": 12,
+      "meanIoU": 0.9926,
+      "lastFrameIoU": 0.9905,
+      "minFrameIoU": 0.9905,
+      "maskFlicker255": 0.112,
+      "meanForegroundCoverage": 0.2348,
+      "groundTruthCoverage": 0.2342
+    },
+    {
+      "engine": "rvm",
+      "analysisEdge": 224,
+      "firstFrameMs": 138.567,
+      "medianMs": 138.367,
+      "p95Ms": 148.309,
+      "samples": 12,
+      "meanIoU": 0.9922,
+      "lastFrameIoU": 0.9898,
+      "minFrameIoU": 0.9898,
+      "maskFlicker255": 0.091,
+      "meanForegroundCoverage": 0.2344,
+      "groundTruthCoverage": 0.2342
+    },
+    {
+      "engine": "rvm",
+      "analysisEdge": 256,
+      "firstFrameMs": 165.198,
+      "medianMs": 165.198,
+      "p95Ms": 170.33,
+      "samples": 12,
+      "meanIoU": 0.9918,
+      "lastFrameIoU": 0.9885,
+      "minFrameIoU": 0.9885,
+      "maskFlicker255": 0.09,
+      "meanForegroundCoverage": 0.2344,
+      "groundTruthCoverage": 0.2342
+    },
+    {
+      "engine": "rvm",
+      "analysisEdge": 320,
+      "firstFrameMs": 252.012,
+      "medianMs": 254.718,
+      "p95Ms": 263.282,
+      "samples": 12,
+      "meanIoU": 0.9915,
+      "lastFrameIoU": 0.9883,
+      "minFrameIoU": 0.9883,
+      "maskFlicker255": 0.093,
+      "meanForegroundCoverage": 0.2343,
+      "groundTruthCoverage": 0.2342
+    },
+    {
+      "engine": "modnet",
+      "firstFrameMs": 856.476,
+      "medianMs": 848.026,
+      "p95Ms": 869.262,
+      "samples": 12,
+      "meanIoU": 0.9918,
+      "lastFrameIoU": 0.9881,
+      "minFrameIoU": 0.9881,
+      "maskFlicker255": 0.077,
+      "meanForegroundCoverage": 0.234,
+      "groundTruthCoverage": 0.2342
+    }
+  ],
+  "limitations": [
+    "not real-person evidence",
+    "not browser camera/WebGL",
+    "not Android performance",
+    "no physical-device thermal or memory measurements"
+  ]
+}
