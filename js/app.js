@@ -26,18 +26,21 @@
     try { const v = +localStorage.getItem('vs_max_ms'); if (v >= 20 && v <= 2000) return v; } catch (e) {}
     // v0.80: a camera that only delivers 10-15 fps (dim room, auto exposure) gives the model more time per mask before it counts as "too slow" (a mask is only needed once per camera frame).
     let cam = 0; try { cam = camRate || window.__camFps || 0; } catch (e) { cam = window.__camFps || 0; }   // camRate is declared further down: the try guards its first use
-    return cam > 0 && cam < 24 ? Math.min(150, Math.max(MODNET_MAX_MS, Math.round((1000 / cam) * 1.4))) : MODNET_MAX_MS;
+    const base = cam > 0 && cam < 24 ? Math.min(150, Math.max(MODNET_MAX_MS, Math.round((1000 / cam) * 1.4))) : MODNET_MAX_MS;
+    return asyncSegOn() ? base * 3 : base;   // v0.93: segmentation runs off the render path, so the model may take ~3 frames per mask
   }
+  // v0.93 decoupled pipeline: draw every camera frame at once with the LATEST mask; segment asynchronously (<= ~6 masks/s). localStorage vs_async_seg=0 turns it off.
+  function asyncSegOn() { try { return localStorage.getItem('vs_async_seg') !== '0'; } catch (e) { return true; } }
   const MODEL_PREF_KEY = 'vs_model_pref';
   const BENCH_KEY = 'vs_model_bench';
   function deviceKey() { return (navigator.userAgent || '') + '|' + (navigator.gpu ? 'gpu' : 'nogpu'); }
   function readBench() {
     try {
       const b = JSON.parse(localStorage.getItem(BENCH_KEY) || 'null');
-      return b && b.v === 3 && b.key === deviceKey() ? b : null;   // v3 = per-engine results (rvmMs / modnetMs); older results are ignored
+      return b && b.v === 4 && b.key === deviceKey() ? b : null;   // v3 = per-engine results (rvmMs / modnetMs); older results are ignored
     } catch (e) { return null; }
   }
-  function writeBench(b) { try { localStorage.setItem(BENCH_KEY, JSON.stringify(Object.assign({ v: 3, key: deviceKey(), at: Date.now() }, b))); } catch (e) {} }
+  function writeBench(b) { try { localStorage.setItem(BENCH_KEY, JSON.stringify(Object.assign({ v: 4, key: deviceKey(), at: Date.now() }, b))); } catch (e) {} }
   function showBenchNote(text) { if (els.modelBenchNote) els.modelBenchNote.textContent = text; }
   // v0.88: while the cutout engine loads (the first visit downloads about 19 MB) show a real message on the stage, not a black rectangle.
   let loadOverlayTimer = null, loadOverlayEl = null;
@@ -599,6 +602,7 @@
   let segStride = 1;               // mask refresh rate: 1 = every frame; 2 = every other frame (FAST-only fallback)
   let strideTick = 0;
   let prevRender = null; // v0.46: promise of the render currently in flight
+  let asyncSegBusy = false, asyncSegPromise = null, asyncSegLastAt = 0, asyncSegDone = 0, asyncSegMinGap = 150;
   let cachedMaskBitmap = null;     // last full-size mask, reused on skipped frames (only populated when segStride > 1)
   let segMsEma = 0;                // smoothed wall-clock cost of one segmentation call, ms
   let loopToken = 0;               // bumped on every start/stop: a superseded processLoop iteration exits instead of racing the new loop
@@ -1271,6 +1275,10 @@
     const n = els.video.getVideoPlaybackQuality().totalVideoFrames, t = performance.now();
     if (camPrevN && t > camPrevT) camRate = Math.round(((n - camPrevN) * 1000 / (t - camPrevT)) * 10) / 10;
     camPrevN = n; camPrevT = t;
+    try {   // v0.93: a dark room makes auto-exposure lengthen the shutter, which caps the camera near 10 fps
+      const boosted = segProvider && (segProvider.lastBoostApplied || (segProvider.impl && segProvider.impl.lastBoostApplied));
+      if (running && camRate > 0 && camRate < 14 && boosted && t - (runSince || t) > 5000) setPerfBanner('dark-scene', 'The room is dark, so your camera is slowed to about ' + Math.round(camRate) + ' fps. More light is the cheapest way to a smoother picture.');
+    } catch (e) {}
     // Auto-fallback: loop is much slower than the camera and rVFC is in use -> rVFC is being throttled; use rAF from now on.
     if (!runSince) runSince = t;
     if (!tuningNow && useRvfc && t - runSince > 6000 && recentFps > 0 && recentFps < 15 && camRate > recentFps * 1.5) {
@@ -1564,6 +1572,22 @@
   };
   window.VS.pairReset = function () { pairLog.length = 0; };
 
+  function startAsyncSeg(token) {
+    asyncSegBusy = true; asyncSegLastAt = performance.now();
+    const t0 = asyncSegLastAt;
+    asyncSegPromise = Promise.resolve().then(() => segProvider.segment(els.video)).then(async (r) => {
+      if (token !== loopToken || !r || !r.segmentationMask) return;
+      const ms = performance.now() - t0;
+      segMsEma = segMsEma ? segMsEma * 0.8 + ms * 0.2 : ms;
+      lastMaskSize = (r.segmentationMask.width || '?') + 'x' + (r.segmentationMask.height || '?');
+      const fresh = await createImageBitmap(r.segmentationMask);
+      if (token !== loopToken) { fresh.close(); return; }
+      const old = cachedMaskBitmap; cachedMaskBitmap = fresh; asyncSegDone++;
+      if (old) setTimeout(() => { try { old.close(); } catch (e) {} }, 400);   // the render loop may still be copying from it
+      maskWatchdog();
+    }).catch(() => {}).finally(() => { asyncSegBusy = false; });
+  }
+
   async function processLoop() {
     if (!running) return;
     if (checkPaused || benchBusy) { scheduleNext(); return; }   // Studio Check or the model speed test owns the CPU/GPU while it measures (the picture holds its last frame for a few seconds)
@@ -1592,7 +1616,12 @@
     // frames between reuse that mask against a FRESH camera image, so the
     // picture stays live and only the cutout edge refreshes less often.
     let runInference = true;
-    if (segStride > 1 && cachedMaskBitmap) runInference = (strideTick++ % segStride) === 0;
+    const useAsync = asyncSegOn() && !noPersonMode;
+    if (useAsync && cachedMaskBitmap) {
+      runInference = false;   // never wait for the model here: reuse the latest mask on this fresh camera frame
+      if (!asyncSegBusy && performance.now() - asyncSegLastAt >= asyncSegMinGap && !benchBusy) startAsyncSeg(myLoop);
+    } else if (segStride > 1 && cachedMaskBitmap) runInference = (strideTick++ % segStride) === 0;
+    if (runInference && asyncSegBusy && asyncSegPromise) { try { await asyncSegPromise; } catch (e) {} }   // first mask / after a cache reset: never run two inferences at once
 
     let results = null, maskFrame = null;
     if (runInference) {
@@ -1619,7 +1648,7 @@
     // to redraw or clear between calls. The copy is full-size (no crop) so the
     // crop rectangle below means the same thing for both sources.
     let maskSource;
-    if (segStride > 1) {
+    if (segStride > 1 || useAsync) {
       if (results) {
         try {
           const fresh = await createImageBitmap(results.segmentationMask);
@@ -1706,6 +1735,7 @@
 
     const tR0 = performance.now();
     prevRender = framePromise.then((outcome) => {
+      if (window.__recFrameHook) { try { window.__recFrameHook(); } catch (e) {} }   // v0.93: recorder samples exactly when a new picture exists
       stg.rend = ema(stg.rend, performance.now() - tR0); // pace the loop to the render's actual draw completion, same as the old synchronous version did
       if (myLoop !== loopToken) return;
 
@@ -2001,20 +2031,20 @@
       const recCtx = recCanvas.getContext('2d', { alpha: false }); recCtx.drawImage(els.canvas, 0, 0);       // throws if this canvas cannot be copied
       canvasStream = recCanvas.captureStream(0); recVT = canvasStream.getVideoTracks()[0];
       if (!recVT || !recVT.requestFrame) throw new Error('requestFrame unavailable');
-      const period = 1000 / fps; let nextAt = performance.now() + period, stopped = false, timer = 0;
-      const clk = window.VS.recClock = { fps, ticks: 0, late: 0, maxLateMs: 0, resyncs: 0, copyMs: 0, copyMaxMs: 0, startedAt: performance.now() };   // how late the clock really fires (shown in Diagnostics)
-      const tick = () => {
+      let stopped = false, hb = 0, lastAt = performance.now();
+      const clk = window.VS.recClock = { fps, mode: 'on-new-frame', ticks: 0, late: 0, maxLateMs: 0, resyncs: 0, copyMs: 0, copyMaxMs: 0, startedAt: performance.now() };
+      const grab = () => {
         if (stopped) return;
-        const lateBy = performance.now() - nextAt; clk.ticks++; if (lateBy > period) clk.late++; if (lateBy > clk.maxLateMs) clk.maxLateMs = Math.round(lateBy);
         try {
           if (recCanvas.width !== els.canvas.width || recCanvas.height !== els.canvas.height) { recCanvas.width = els.canvas.width; recCanvas.height = els.canvas.height; }
-          const c0 = performance.now(); recCtx.drawImage(els.canvas, 0, 0); recVT.requestFrame(); const cm = performance.now() - c0; clk.copyMs = clk.copyMs ? Math.round((clk.copyMs * 0.9 + cm * 0.1) * 10) / 10 : Math.round(cm * 10) / 10; if (cm > clk.copyMaxMs) clk.copyMaxMs = Math.round(cm);
-        } catch (e) { /* skip this tick */ }
-        const now = performance.now(); nextAt += period; if (nextAt < now - period) { nextAt = now; clk.resyncs++; }                // far behind: resync, do not burst
-        timer = setTimeout(tick, Math.max(0, nextAt - now));
+          const c0 = performance.now(); recCtx.drawImage(els.canvas, 0, 0); recVT.requestFrame(); const cm = performance.now() - c0;
+          clk.ticks++; lastAt = performance.now();
+          clk.copyMs = clk.copyMs ? Math.round((clk.copyMs * 0.9 + cm * 0.1) * 10) / 10 : Math.round(cm * 10) / 10; if (cm > clk.copyMaxMs) clk.copyMaxMs = Math.round(cm);
+        } catch (e) { /* skip */ }
       };
-      timer = setTimeout(tick, period);
-      window.__recClockStop = () => { stopped = true; clearTimeout(timer); window.__recClockStop = null; };
+      window.__recFrameHook = grab;                                     // called once per finished render: no 30 fps clock, no lateness/resync logic
+      hb = setInterval(() => { if (performance.now() - lastAt > 700) grab(); }, 350);   // heartbeat: a stalled render still yields a frame so the file never has a long gap
+      window.__recClockStop = () => { stopped = true; clearInterval(hb); window.__recFrameHook = null; window.__recClockStop = null; };
     } catch (e) {
       try { if (canvasStream) canvasStream.getTracks().forEach((t) => t.stop()); } catch (e2) {}
       canvasStream = els.canvas.captureStream(0); recVT = canvasStream.getVideoTracks()[0];                    // v0.46 behaviour

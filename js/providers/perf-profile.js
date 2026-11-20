@@ -203,7 +203,7 @@
   function wasmThreads(cores, isolated, mobile, forceOne) {
     if (forceOne || !isolated) return 1;
     const c = Math.max(1, (cores | 0) || 2);
-    return Math.max(1, Math.min(mobile ? 2 : 4, c - 1));
+    return Math.max(1, Math.min(mobile ? 3 : 4, Math.max(2, c - 1)));
   }
 
   VS.PerfProfile = {
